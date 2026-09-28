@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent 对话｜Chris Li</title>
+<meta name="description" content="与 Chris Li 的企业 AI 助手对话——支持技能（Skills）：生成 Word/Excel 文档、执行脚本、创建自己的技能。">
+<meta name="theme-color" content="#050812">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23050812'/><text x='50%25' y='56%25' font-size='15' font-family='monospace' fill='%2368e7ff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
+<link rel="stylesheet" href="agent.css">
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="bg-grid"></div>
+
+<header class="bar">
+  <div class="left">
+    <button class="iconbtn only-mobile" id="sideToggle" aria-label="会话列表" aria-controls="side" aria-expanded="false">☰</button>
+    <span class="logo">CL</span>
+    <h1>Chris Li · AI Agent</h1>
+  </div>
+  <div class="status" id="status" role="status"><i id="dot"></i><span id="statusText">连接中…</span></div>
+  <div class="actions">
+    <a class="iconbtn" href="skills.html">🧩 技能</a>
+    <a class="iconbtn hide-mobile" href="ai-agent.html">← 返回</a>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="side" id="side" aria-label="会话列表">
+    <button class="newbtn" id="newBtn">＋ 新对话</button>
+    <div class="side-title">历史会话</div>
+    <ul class="sessions" id="sessions"></ul>
+    <div class="side-foot" id="quota"></div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <main class="main">
+    <div class="chat" id="chat" aria-live="polite">
+      <div class="chat-inner" id="chatInner"></div>
+    </div>
+
+    <div class="composer">
+      <div class="attach-list" id="attachList"></div>
+      <div class="composer-inner">
+        <button class="attach" id="attachBtn" title="上传文件（供技能处理）" aria-label="上传文件">📎</button>
+        <input type="file" id="fileInput" hidden>
+        <textarea id="input" rows="1" placeholder="输入你的问题，或让我用技能生成文档… Enter 发送，Shift+Enter 换行" aria-label="消息"></textarea>
+        <button class="send" id="send" title="发送" aria-label="发送">➤</button>
+      </div>
+      <div class="hint">回答由 DeepSeek 生成，可能存在误差。脚本在隔离沙箱中运行，生成的文件保留 7 天。</div>
+    </div>
+  </main>
+</div>
+
+<template id="welcomeTpl">
+  <div class="welcome" id="welcome">
+    <h2>你好，我是 <span class="gradient">Chris 的 AI 助手</span></h2>
+    <p>我可以回答企业 AI、SAP Business One、知识库与 Agent 落地的问题，也能调用<b>技能</b>帮你生成 Word / Excel 文档、处理数据，甚至创建你自己的技能。</p>
+    <div class="suggest">
+      <button class="chip">企业想落地 AI，第一步该做什么？</button>
+      <button class="chip">帮我写一份《企业 AI 落地方案》Word 文档，包含背景、目标、实施路径和预算表</button>
+      <button class="chip">生成一个 Excel：2025 年 1–6 月销售额和成本示例数据，带毛利公式和柱状图</button>
+      <button class="chip">帮我创建一个"会议纪要"技能，输入会议要点，输出格式规范的 Word 纪要</button>
+    </div>
+  </div>
+</template>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/marked-14.1.4.umd.js"></script>
+<script src="vendor/purify-3.2.3.min.js"></script>
+<script src="agent.js"></script>
+</body>
+</html>

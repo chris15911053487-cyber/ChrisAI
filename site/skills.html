@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>技能管理｜Chris Li · AI Agent</title>
+<meta name="description" content="查看、创建、编辑、导入导出 AI Agent 技能（Skills）。">
+<meta name="theme-color" content="#050812">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23050812'/><text x='50%25' y='56%25' font-size='15' font-family='monospace' fill='%2368e7ff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
+<link rel="stylesheet" href="agent.css">
+<style>
+body{overflow:auto}
+.wrap{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:26px 0 60px;display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:16px}
+.list-head{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.group{font:11px/1 var(--mono);color:#5f7290;letter-spacing:.08em;margin:14px 4px 6px}
+.sk{display:block;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:12px;padding:10px 12px;cursor:pointer;transition:background .15s,border-color .15s}
+.sk:hover{background:rgba(126,170,255,.07)}
+.sk.active{border-color:rgba(104,231,255,.4);background:rgba(104,231,255,.08)}
+.sk .n{font:600 14px/1.3 var(--mono);display:flex;align-items:center;gap:8px}
+.sk .ds{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.badge{font:10px/1 var(--mono);padding:3px 6px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-weight:400}
+.badge.builtin{color:var(--cyan);border-color:rgba(104,231,255,.35)}
+.badge.public{color:var(--violet);border-color:rgba(169,124,255,.4)}
+.badge.user{color:var(--green);border-color:rgba(85,230,177,.4)}
+.empty{color:#5f7290;font-size:13px;padding:6px 12px}
+.detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.detail-head h2{margin:0;font:600 20px/1.3 var(--mono);display:flex;align-items:center;gap:10px}
+.detail-head p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.6;max-width:640px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.ed{display:grid;grid-template-columns:220px 1fr;gap:14px;min-height:420px}
+.files-nav{border-right:1px solid var(--line);padding-right:12px;display:flex;flex-direction:column;gap:2px}
+.fbtn{display:flex;justify-content:space-between;gap:8px;text-align:left;background:none;border:none;border-radius:8px;padding:7px 9px;cursor:pointer;font:12px/1.4 var(--mono);color:#c6d4ea;word-break:break-all}
+.fbtn:hover{background:rgba(126,170,255,.07)}
+.fbtn.active{background:rgba(104,231,255,.1);color:var(--text)}
+.fbtn small{color:#5f7290;flex:none}
+.fbtn.dirty::after{content:"●";color:var(--amber);margin-left:4px}
+.editor{display:flex;flex-direction:column;gap:8px;min-width:0}
+.editor .path{font:12px/1 var(--mono);color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.editor textarea{width:100%;min-height:460px;flex:1;resize:vertical;background:#060b16;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font:13px/1.6 var(--mono);color:#dbe6f7;tab-size:4;white-space:pre;overflow:auto}
+.editor textarea:focus{outline:none;border-color:rgba(104,231,255,.45)}
+.editor textarea[readonly]{color:#aebbd0}
+.bin{color:var(--muted);font-size:13px;padding:20px;border:1px dashed var(--line);border-radius:10px}
+.welcome-card h2{margin:0 0 10px;font-size:22px}
+.welcome-card p,.welcome-card li{color:#b9c7dd;font-size:14px;line-height:1.8}
+.welcome-card code{font-family:var(--mono);background:rgba(126,170,255,.12);padding:.1em .35em;border-radius:5px;font-size:.9em}
+dialog{background:#0a1222;color:var(--text);border:1px solid rgba(104,231,255,.35);border-radius:16px;padding:20px;width:min(460px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h3{margin:0 0 12px}
+dialog label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
+dialog input,dialog textarea{width:100%;background:#060b16;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text);font:14px/1.5 inherit;font-family:inherit}
+dialog input:focus,dialog textarea:focus{outline:none;border-color:rgba(104,231,255,.45)}
+dialog .row{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+dialog .err{color:#ffb3b3;font-size:13px;margin-top:8px;min-height:1em}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}.ed{grid-template-columns:1fr}.files-nav{border-right:none;border-bottom:1px solid var(--line);padding:0 0 10px}}
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="bg-grid"></div>
+
+<header class="bar">
+  <div class="left">
+    <span class="logo">CL</span>
+    <h1>技能管理 · Skills</h1>
+  </div>
+  <div class="actions">
+    <a class="iconbtn" href="agent.html">💬 返回对话</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <aside class="card">
+    <div class="list-head">
+      <button class="iconbtn primary" id="newSkillBtn">＋ 新建技能</button>
+      <button class="iconbtn" id="importBtn">⤒ 导入 zip</button>
+      <input type="file" id="importInput" accept=".zip,application/zip" hidden>
+    </div>
+    <div id="skillList"></div>
+  </aside>
+
+  <main class="card" id="detail">
+    <div class="welcome-card">
+      <h2>什么是技能？</h2>
+      <p>技能（Skill）是一个包含 <code>SKILL.md</code> 说明和可选 Python 脚本的文件夹。对话时，AI 会根据技能的描述自动判断何时使用它，按说明调用脚本，在隔离沙箱中生成文档、表格等结果。</p>
+      <ul>
+        <li><b>内置 / 公共技能</b>：所有访客可用，只读；可以"复制"成自己的技能再修改。</li>
+        <li><b>我的技能</b>：只有你自己可见。可以在这里编辑，也可以在对话中说"帮我创建一个 xx 技能"。</li>
+        <li>技能格式兼容 Anthropic Agent Skills，可导入 / 导出 zip。</li>
+      </ul>
+      <p>从左侧选择一个技能查看详情。</p>
+    </div>
+  </main>
+</div>
+
+<dialog id="dlg">
+  <form method="dialog" id="dlgForm">
+    <h3 id="dlgTitle"></h3>
+    <div id="dlgFields"></div>
+    <div class="err" id="dlgErr"></div>
+    <div class="row">
+      <button class="iconbtn" value="cancel" formnovalidate>取消</button>
+      <button class="iconbtn primary" value="ok" id="dlgOk">确定</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const NAME_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+  const SCOPE = {builtin: '内置', public: '公共', user: '我的'};
+  const TEXT_EXT = /\.(md|txt|py|json|ya?ml|csv|html|css|js|xml|sql|toml|ini|cfg)$/i;
+
+  let skills = [], current = null; // current: {meta, files:{path:{content,orig,text,size}}, active, added:Set, deleted:Set}
+
+  let tt;
+  function toast(msg, err) {
+    const t = $('toast'); t.textContent = msg; t.classList.toggle('err', !!err); t.classList.add('show');
+    clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+  async function api(path, opts = {}) {
+    const r = await fetch(path, {credentials: 'same-origin', ...opts});
+    let d = null; try { d = await r.json(); } catch {}
+    if (!r.ok) {
+      let msg = d && d.detail;
+      if (Array.isArray(msg)) msg = msg.map(x => x.msg).join('；');
+      throw new Error(msg || ('请求失败（' + r.status + '）'));
+    }
+    return d;
+  }
+  const jpost = (path, body, method = 'POST') => api(path, {method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+
+  /* ---------- 通用对话框 ---------- */
+  function ask(title, fields, onOk) {
+    const dlg = $('dlg'), box = $('dlgFields');
+    $('dlgTitle').textContent = title; $('dlgErr').textContent = ''; box.replaceChildren();
+    const inputs = {};
+    for (const f of fields) {
+      const lab = el('label', '', f.label); const id = 'f_' + f.key; lab.htmlFor = id;
+      const inp = el(f.multiline ? 'textarea' : 'input'); inp.id = id; inp.value = f.value || ''; if (f.placeholder) inp.placeholder = f.placeholder;
+      if (f.multiline) inp.rows = 3;
+      inputs[f.key] = inp; box.append(lab, inp);
+    }
+    const form = $('dlgForm');
+    form.onsubmit = async e => {
+      if (e.submitter && e.submitter.value === 'cancel') return;
+      e.preventDefault();
+      const vals = Object.fromEntries(Object.entries(inputs).map(([k, v]) => [k, v.value.trim()]));
+      $('dlgOk').disabled = true;
+      try { await onOk(vals); dlg.close(); }
+      catch (err) { $('dlgErr').textContent = err.message; }
+      finally { $('dlgOk').disabled = false; }
+    };
+    dlg.showModal();
+    const first = Object.values(inputs)[0]; if (first) first.focus();
+  }
+
+  /* ---------- 列表 ---------- */
+  async function loadList(select) {
+    try { skills = (await api('/api/skills')).skills; } catch (e) { toast(e.message, true); return; }
+    const box = $('skillList'); box.replaceChildren();
+    const groups = [['我的技能', s => s.scope === 'user'], ['内置 / 公共技能', s => s.scope !== 'user']];
+    for (const [title, fn] of groups) {
+      box.append(el('div', 'group', title));
+      const items = skills.filter(fn);
+      if (!items.length) box.append(el('div', 'empty', title === '我的技能' ? '还没有，点击"新建技能"或在对话中让 AI 帮你创建' : '无'));
+      for (const s of items) {
+        const b = el('button', 'sk'); b.dataset.name = s.name;
+        const n = el('div', 'n', s.name); n.append(el('span', 'badge ' + s.scope, SCOPE[s.scope]));
+        b.append(n, el('div', 'ds', s.description));
+        b.addEventListener('click', () => openSkill(s.name));
+        box.append(b);
+      }
+    }
+    markActive();
+    if (select) openSkill(select);
+  }
+  function markActive() {
+    document.querySelectorAll('.sk').forEach(b => b.classList.toggle('active', !!current && b.dataset.name === current.meta.name));
+  }
+
+  /* ---------- 详情 / 编辑 ---------- */
+  function dirty() {
+    if (!current) return false;
+    return current.added.size || current.deleted.size || Object.values(current.files).some(f => f.text && f.content !== f.orig);
+  }
+  addEventListener('beforeunload', e => { if (dirty()) { e.preventDefault(); e.returnValue = ''; } });
+
+  async function openSkill(name) {
+    if (dirty() && !confirm('有未保存的修改，确定放弃？')) return;
+    let meta;
+    try { meta = await api('/api/skills/' + encodeURIComponent(name)); } catch (e) { toast(e.message, true); return; }
+    const files = {};
+    for (const f of meta.files) files[f.path] = {size: f.size, text: TEXT_EXT.test(f.path), content: null, orig: null};
+    files['SKILL.md'] = {size: meta.skill_md.length, text: true, content: meta.skill_md, orig: meta.skill_md};
+    current = {meta, files, active: 'SKILL.md', added: new Set(), deleted: new Set()};
+    history.replaceState(null, '', '#' + name);
+    renderDetail();
+    markActive();
+  }
+
+  async function ensureContent(path) {
+    const f = current.files[path];
+    if (!f || f.content != null || !f.text) return;
+    const r = await api('/api/skills/' + encodeURIComponent(current.meta.name) + '/files/' + path.split('/').map(encodeURIComponent).join('/'));
+    f.text = r.text; f.content = f.orig = r.text ? r.content : null;
+  }
+
+  function renderDetail() {
+    const {meta} = current, editable = meta.editable;
+    const d = $('detail'); d.replaceChildren();
+
+    const head = el('div', 'detail-head');
+    const left = el('div');
+    const h = el('h2', '', meta.name); h.append(el('span', 'badge ' + meta.scope, SCOPE[meta.scope]));
+    left.append(h, el('p', '', meta.description));
+    const btns = el('div', 'btns');
+    const btn = (label, fn, cls) => { const b = el('button', 'iconbtn' + (cls ? ' ' + cls : ''), label); b.addEventListener('click', fn); btns.append(b); return b; };
+    btn('💬 在对话中使用', () => { location.href = 'agent.html?q=' + encodeURIComponent('请使用技能 ' + meta.name + ' 帮我：'); });
+    if (editable) {
+      btn('💾 保存', save, 'primary');
+      btn('＋ 新文件', addFile);
+    }
+    btn('⤓ 导出 zip', () => { location.href = '/api/skills/' + encodeURIComponent(meta.name) + '/export'; });
+    btn('⧉ 复制为我的技能', fork);
+    if (editable) btn('🗑 删除', removeSkill, 'danger');
+    head.append(left, btns);
+
+    const ed = el('div', 'ed');
+    const nav = el('div', 'files-nav');
+    const paths = Object.keys(current.files).filter(p => !current.deleted.has(p)).sort((a, b) => (a === 'SKILL.md' ? -1 : b === 'SKILL.md' ? 1 : a.localeCompare(b)));
+    for (const p of paths) {
+      const f = current.files[p];
+      const b = el('button', 'fbtn' + (p === current.active ? ' active' : '') + ((f.text && f.content !== f.orig) || current.added.has(p) ? ' dirty' : ''));
+      const name = el('span', '', p);
+      b.append(name, el('small', '', f.content != null ? '' : fmt(f.size)));
+      b.addEventListener('click', async () => { current.active = p; try { await ensureContent(p); } catch (e) { toast(e.message, true); } renderDetail(); });
+      nav.append(b);
+    }
+
+    const editor = el('div', 'editor');
+    const f = current.files[current.active];
+    const pathRow = el('div', 'path'); pathRow.append(el('span', '', current.active));
+    if (editable && current.active !== 'SKILL.md') {
+      const del = el('button', 'iconbtn danger', '删除此文件');
+      del.addEventListener('click', () => {
+        if (!confirm('从技能中删除 ' + current.active + '？（保存后生效）')) return;
+        if (current.added.has(current.active)) { current.added.delete(current.active); delete current.files[current.active]; }
+        else current.deleted.add(current.active);
+        current.active = 'SKILL.md'; renderDetail();
+      });
+      pathRow.append(del);
+    }
+    editor.append(pathRow);
+    if (f && f.text && f.content != null) {
+      const ta = el('textarea'); ta.value = f.content; ta.readOnly = !editable; ta.spellcheck = false;
+      ta.setAttribute('aria-label', current.active);
+      ta.addEventListener('input', () => {
+        const was = f.content !== f.orig; f.content = ta.value;
+        if (was !== (f.content !== f.orig)) { const pos = ta.selectionStart; renderDetail(); const t2 = document.querySelector('.editor textarea'); t2.focus(); t2.selectionStart = t2.selectionEnd = pos; }
+      });
+      ta.addEventListener('keydown', e => {
+        if (e.key === 'Tab' && !ta.readOnly) { e.preventDefault(); document.execCommand('insertText', false, '    '); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 's' && editable) { e.preventDefault(); save(); }
+      });
+      editor.append(ta);
+    } else if (f && !f.text) {
+      const b = el('div', 'bin', '二进制文件（' + fmt(f.size) + '），不支持在线编辑。 ');
+      const a = el('a', '', '下载'); a.style.color = 'var(--cyan)';
+      a.href = '/api/skills/' + encodeURIComponent(meta.name) + '/files/' + current.active.split('/').map(encodeURIComponent).join('/') + '?raw=1';
+      b.append(a); editor.append(b);
+    } else {
+      editor.append(el('div', 'bin', '加载中…'));
+      ensureContent(current.active).then(renderDetail).catch(e => toast(e.message, true));
+    }
+    if (!editable) editor.append(el('div', 'path', '只读：内置/公共技能不可直接修改，可"复制为我的技能"后编辑。'));
+
+    ed.append(nav, editor);
+    d.append(head, ed);
+  }
+
+  const fmt = n => n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB';
+
+  async function save() {
+    const name = current.meta.name;
+    const changed = Object.entries(current.files)
+      .filter(([p, f]) => !current.deleted.has(p) && f.text && f.content != null && (f.content !== f.orig || current.added.has(p)))
+      .map(([path, f]) => ({path, content: f.content}));
+    if (!changed.length && !current.deleted.size) { toast('没有需要保存的修改'); return; }
+    try {
+      await jpost('/api/skills/' + encodeURIComponent(name), {files: changed, delete: [...current.deleted]}, 'PUT');
+      current.added.clear(); current.deleted.clear();
+      toast('已保存');
+      current = null; // 避免 dirty 提示
+      await loadList(name);
+    } catch (e) { toast(e.message, true); }
+  }
+
+  function addFile() {
+    ask('新建文件', [{key: 'path', label: '文件路径（相对技能根目录）', placeholder: 'scripts/main.py 或 references/guide.md'}], async v => {
+      const p = v.path.replace(/^\/+/, '');
+      if (!p || p.split('/').some(s => !s || s === '..' || s.startsWith('.'))) throw new Error('路径不合法');
+      if (!TEXT_EXT.test(p)) throw new Error('在线只能新建文本文件（.py .md .json .txt 等）');
+      if (current.files[p] && !current.deleted.has(p)) throw new Error('文件已存在');
+      current.deleted.delete(p);
+      current.files[p] = {text: true, size: 0, content: p.endsWith('.py') ? '"""说明：用法 python ' + p.split('/').pop() + ' 输出文件名"""\nimport sys\n\n' : '', orig: null};
+      current.added.add(p); current.active = p; renderDetail();
+    });
+  }
+
+  function fork() {
+    const base = current.meta.name.replace(/^my-/, '');
+    ask('复制为我的技能', [{key: 'name', label: '新技能名（小写字母、数字、连字符）', value: 'my-' + base}], async v => {
+      if (!NAME_RE.test(v.name)) throw new Error('名称只能包含小写字母、数字和连字符');
+      await jpost('/api/skills/' + encodeURIComponent(current.meta.name) + '/fork', {new_name: v.name});
+      toast('已复制为 ' + v.name); current = null; await loadList(v.name);
+    });
+  }
+
+  async function removeSkill() {
+    if (!confirm('确定删除技能 ' + current.meta.name + '？此操作不可恢复。')) return;
+    try {
+      await api('/api/skills/' + encodeURIComponent(current.meta.name), {method: 'DELETE'});
+      toast('已删除'); current = null; history.replaceState(null, '', location.pathname);
+      location.reload();
+    } catch (e) { toast(e.message, true); }
+  }
+
+  $('newSkillBtn').addEventListener('click', () => {
+    if (dirty() && !confirm('有未保存的修改，确定放弃？')) return;
+    ask('新建技能', [
+      {key: 'name', label: '技能名（小写字母、数字、连字符）', placeholder: 'meeting-minutes'},
+      {key: 'desc', label: '描述：做什么 + 什么时候用（AI 靠它判断是否调用）', multiline: true, placeholder: '把会议要点整理成规范的会议纪要 Word 文档。用户说"整理会议纪要"时使用。'},
+    ], async v => {
+      if (!NAME_RE.test(v.name)) throw new Error('名称只能包含小写字母、数字和连字符');
+      if (!v.desc) throw new Error('描述不能为空');
+      const desc = v.desc.replace(/\s+/g, ' ');
+      const md = `---\nname: ${v.name}\ndescription: ${JSON.stringify(desc)}\n---\n\n# ${v.name}\n\n## 流程\n1. 向用户确认需要的信息\n2. 调用 \`run_skill_script\`（name: \`${v.name}\`，script: \`scripts/main.py\`，args: ["输出文件名"]，stdin: JSON）\n3. 简要说明结果\n\n## 输入规格\n（在这里写 JSON 示例）\n`;
+      await jpost('/api/skills', {files: [{path: 'SKILL.md', content: md}]});
+      current = null; toast('已创建 ' + v.name); await loadList(v.name);
+    });
+  });
+
+  $('importBtn').addEventListener('click', () => $('importInput').click());
+  $('importInput').addEventListener('change', async () => {
+    const f = $('importInput').files[0]; $('importInput').value = '';
+    if (!f) return;
+    const fd = new FormData(); fd.append('file', f);
+    try {
+      const s = await api('/api/skills/import', {method: 'POST', body: fd});
+      toast('已导入 ' + s.name); current = null; await loadList(s.name);
+    } catch (e) { toast(e.message, true); }
+  });
+
+  const initial = decodeURIComponent(location.hash.slice(1));
+  loadList(NAME_RE.test(initial) ? initial : null);
+})();
+</script>
+</body>
+</html>

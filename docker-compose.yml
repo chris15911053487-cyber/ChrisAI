@@ -1,0 +1,68 @@
+services:
+  website:
+    build: .
+    image: chris-li-site:latest
+    container_name: chris-li-site
+    ports:
+      - "8015:80"          # 宿主机 8015 -> 容器 80，可按需修改左侧端口
+    depends_on:
+      - agent-api
+    networks: [web]
+    restart: unless-stopped
+
+  agent-api:
+    build:
+      context: .                    # 需要同时拷贝 backend/ 与 skills/builtin/
+      dockerfile: backend/Dockerfile
+    image: chris-li-agent-api:latest
+    container_name: chris-li-agent-api
+    env_file:
+      - ./backend/.env              # DEEPSEEK_API_KEY / RUNNER_TOKEN / ADMIN_TOKEN 等
+    environment:
+      RUNNER_URL: http://runner:9000
+      RUNNER_HOST: runner
+    volumes:
+      - agent-data:/data            # SQLite、会话工作区、用户/公共技能
+    expose:
+      - "8000"
+    depends_on:
+      - runner
+    networks: [web, sandbox]        # web 可出网访问 DeepSeek；sandbox 仅用于调用 runner
+    restart: unless-stopped
+
+  # 技能脚本沙箱：无外网、无密钥、只读根文件系统、每任务独立 UID
+  runner:
+    build: ./runner
+    image: chris-li-runner:latest
+    container_name: chris-li-runner
+    init: true                      # 必需：回收被杀死的任务进程
+    env_file:
+      - ./runner/.env               # 仅包含 RUNNER_TOKEN
+    environment:
+      MAX_CONCURRENT: "3"
+      MAX_TIMEOUT: "60"
+      JOB_MEM_MB: "1024"
+    read_only: true
+    tmpfs:
+      - /jobs:size=512m,mode=0711
+      - /tmp:size=64m,mode=1733
+      - /dev/shm:size=16m,mode=1777
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, CHOWN, KILL, DAC_OVERRIDE, FOWNER]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 1536m
+    cpus: 1.0
+    expose:
+      - "9000"
+    networks: [sandbox]
+    restart: unless-stopped
+
+networks:
+  web: {}
+  sandbox:
+    internal: true                  # 没有到外网的路由
+
+volumes:
+  agent-data: {}

@@ -1,0 +1,11 @@
+docs/
+.git/
+.gitignore
+.qrvenv/
+docker-compose.yml
+README*.md
+**/.DS_Store
+**/.env
+**/__pycache__
+**/*.pyc
+data/
