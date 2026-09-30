@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设置｜Chris Li · AI Agent</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#FAFAF9">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
+<link rel="stylesheet" href="tokens.css?v=20260930e">
+<link rel="stylesheet" href="agent.css?v=20260930e">
+<link rel="stylesheet" href="sidebar.css?v=20260930e">
+<style>
+body{overflow:auto;display:block}
+.bar{position:sticky;top:0}
+.wrap{width:min(860px,calc(100% - 40px));margin:0 auto;padding:32px 0 120px}
+.login{max-width:400px;margin:9vh auto;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-lg);padding:32px;box-shadow:var(--sh-2)}
+.login .lk{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--line);background:var(--bg);margin-bottom:18px}
+.login .lk .i{width:18px;height:18px}
+.login h2{margin:0 0 6px;font-size:20px;font-weight:600;letter-spacing:-.02em}
+.login p{margin:0 0 22px;color:var(--text-2);font-size:13.5px;line-height:1.65}
+.login label{display:block;font-size:13px;font-weight:500;color:var(--text-2);margin:0 0 6px}
+.login .err{color:var(--err);font-size:13px;margin-top:10px;min-height:1em}
+.login button{margin-top:14px;width:100%;height:38px}
+.page-head{margin:0 0 20px}
+.status-line{margin-top:32px;font-size:13px;color:var(--text-2);padding:12px 16px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg-2);line-height:1.6}
+.status-line .warn{color:var(--warn)}
+.sec{margin-top:28px}
+.sec h3{margin:0 0 4px;font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.sec h3 .i{width:16px;height:16px;color:var(--text-3)}
+.sec .desc{margin:0 0 12px;font-size:13px;color:var(--text-3);line-height:1.6}
+.box{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);overflow:hidden}
+.frow{padding:14px 18px;border-bottom:1px solid var(--line)}
+.frow.changed{background:var(--accent-soft)}
+.fhead{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.fhead label{font-size:13.5px;font-weight:500}
+.fhead .fname{font:11px/1 var(--mono);color:var(--text-3);margin-left:auto}
+.fctl{display:flex;gap:6px;align-items:center}
+.fctl .field{flex:1;min-width:0}
+.fctl .iconbtn{flex:none}
+.fhint{font-size:12px;color:var(--text-3);margin-top:6px;line-height:1.55}
+.foot{display:flex;align-items:center;gap:12px;padding:12px 18px;background:var(--bg)}
+.test-res{font-size:12.5px;color:var(--text-3);line-height:1.5;word-break:break-all}
+.test-res.ok{color:var(--ok)}
+.test-res.fail{color:var(--err)}
+.savebar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:14px;padding:10px 12px 10px 18px;border-radius:14px;background:var(--text);color:#fff;box-shadow:var(--sh-3);font-size:13px}
+.savebar[hidden]{display:none}
+.savebar .iconbtn{height:32px}
+.savebar .ghost2{background:transparent;color:#fff;border-color:rgba(255,255,255,.3)}
+.mrow{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+.mrow:last-child{border-bottom:none}
+.mrow.off{opacity:.55}
+.mrow .mn{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mrow .mm{font:11.5px/1.5 var(--mono);color:var(--text-3);margin-top:4px;word-break:break-all}
+.mrow .md{font-size:12.5px;color:var(--text-2);margin-top:3px}
+.mrow .ops{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.mrow .ops .iconbtn{height:28px;padding:0 10px;font-size:12px}
+.mrow .test-res{grid-column:1 / -1}
+.mrow .test-res:empty{display:none}
+.badge.warn{color:var(--warn);border-color:rgba(180,83,9,.3)}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+dialog{width:min(620px,94vw);max-height:92vh;overflow:auto}
+dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+dialog .fieldhint{font-size:12px;line-height:1.55;color:var(--text-3);margin-top:6px}
+dialog .checks{margin-top:10px}
+dialog .chk{display:flex;align-items:center;gap:8px;margin:10px 0 0;font-weight:400;color:var(--text)}
+dialog .chk input{width:16px;height:16px;accent-color:var(--text);flex:none}
+dialog textarea{font:12.5px/1.6 var(--mono)}
+dialog .adv{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+dialog .adv summary{cursor:pointer;font-size:13px;font-weight:500;color:var(--text-2)}
+dialog .row{align-items:center}
+#mTestRes{margin-top:12px}
+@media(max-width:600px){dialog .two{grid-template-columns:1fr}.mrow{grid-template-columns:1fr}.mrow .ops{justify-content:flex-start}}
+.note{margin-top:28px;font-size:12.5px;color:var(--text-3);line-height:1.7}
+@media(min-width:861px){.savebar{margin-left:calc(var(--nav-w) / 2)}}
+</style>
+</head>
+<body data-nav="settings">
+
+<header class="bar">
+  <div class="left">
+    <a class="logo" href="index.html" aria-label="返回首页">CL</a>
+    <h1>设置<small>Settings</small></h1>
+  </div>
+  <div class="actions">
+    <a class="iconbtn ghost hide-mobile" href="admin.html"><i data-i="grid"></i>卡片管理</a>
+    <button class="iconbtn" id="logoutBtn" hidden><i data-i="logout"></i>退出</button>
+  </div>
+</header>
+
+<div class="wrap" id="loginWrap" hidden>
+  <div class="login">
+    <div class="lk"><i data-i="shield"></i></div>
+    <h2>管理员验证</h2>
+    <p>模型配置仅管理员可修改。请输入管理令牌（ADMIN_TOKEN），令牌只保存在本浏览器会话中。</p>
+    <label for="tokenInput">管理令牌</label>
+    <input class="field" type="password" id="tokenInput" placeholder="粘贴 ADMIN_TOKEN" autocomplete="current-password">
+    <div class="err" id="loginErr" role="alert"></div>
+    <button class="iconbtn primary" id="loginBtn">进入</button>
+  </div>
+</div>
+
+<div class="wrap" id="panelWrap" hidden>
+  <div class="page-head">
+    <span class="eyebrow">Settings</span>
+    <h2>模型配置</h2>
+    <p>所有修改保存后立即生效，无需重启。对话模型支持任意 OpenAI 兼容接口，可配置多个，访客在对话框中切换。</p>
+  </div>
+  <div id="models"></div>
+  <div id="panel"></div>
+  <p class="note">API Key 只写不读：页面只显示末 4 位，输入框留空表示不修改。保存的 Key 存放在服务器数据库中（agent-data 数据卷），请妥善保管服务器与管理令牌。</p>
+</div>
+
+<dialog id="mdlg">
+  <form method="dialog" id="mForm">
+    <h3 id="mTitle">添加模型</h3>
+    <label for="m_preset">服务商预设</label>
+    <select id="m_preset"></select>
+    <div class="fieldhint" id="m_presetHint"></div>
+    <div class="two">
+      <div><label for="m_name">显示名称</label><input id="m_name" maxlength="60" placeholder="如：通义千问 Plus" required></div>
+      <div><label for="m_model">模型 ID</label><input id="m_model" maxlength="200" list="m_modelList" placeholder="请求中的 model" spellcheck="false" required><datalist id="m_modelList"></datalist></div>
+    </div>
+    <label for="m_desc">说明（访客在对话框中看到）</label>
+    <input id="m_desc" maxlength="200" placeholder="如：擅长长文写作，速度中等">
+    <label for="m_base">接口地址（Base URL）</label>
+    <input id="m_base" maxlength="500" placeholder="https://…/v1（会自动拼接 /chat/completions）" spellcheck="false" required>
+    <div class="two">
+      <div><label for="m_key">API Key</label><input id="m_key" type="password" autocomplete="new-password" maxlength="500"></div>
+      <div><label for="m_keyEnv">或从 .env 读取（变量名）</label><input id="m_keyEnv" maxlength="64" placeholder="如 DEEPSEEK_API_KEY" spellcheck="false"></div>
+    </div>
+    <div class="fieldhint" id="m_keyHint">直接填写的 Key 优先；环境变量名须以 _API_KEY 结尾。本地模型（如 Ollama）可两者都留空。</div>
+    <div class="checks">
+      <label class="chk"><input type="checkbox" id="m_tools" checked>支持工具调用（技能、代码执行、知识库检索需要）</label>
+      <label class="chk"><input type="checkbox" id="m_enabled" checked>启用（访客可在对话框中选择）</label>
+    </div>
+    <details class="adv">
+      <summary>高级参数</summary>
+      <div class="two">
+        <div><label for="m_temp">temperature（留空不传）</label><input id="m_temp" type="number" step="0.1" min="0" max="2"></div>
+        <div><label for="m_max">max_tokens（留空不传）</label><input id="m_max" type="number" min="1"></div>
+      </div>
+      <label for="m_extra">附加请求参数（JSON，合并进请求体；值为 null 表示删除该默认参数）</label>
+      <textarea id="m_extra" rows="4" spellcheck="false" placeholder='{"thinking": {"type": "disabled"}}'></textarea>
+      <label class="chk"><input type="checkbox" id="m_replay">历史消息回传思考内容 reasoning_content（DeepSeek 思考模式 + 工具调用时需要）</label>
+      <label for="m_sort">排序（小的在前）</label><input id="m_sort" type="number" value="0">
+    </details>
+    <div class="test-res" id="mTestRes" aria-live="polite"></div>
+    <div class="err" id="mErr" role="alert"></div>
+    <div class="row">
+      <button class="iconbtn" type="button" id="mTest"><i data-i="activity"></i>测试</button>
+      <span style="flex:1"></span>
+      <button class="iconbtn" value="cancel" formnovalidate>取消</button>
+      <button class="iconbtn primary" value="ok" id="mOk">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="savebar" id="saveBar" role="region" aria-label="未保存的修改" hidden>
+  <span id="saveCount"></span>
+  <button class="iconbtn ghost2" id="discardBtn" type="button">放弃</button>
+  <button class="iconbtn" id="saveBtn" type="button"><i data-i="save"></i>保存</button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="icons.js?v=20260930e"></script>
+<script src="sidebar.js?v=20260930e"></script>
+<script src="settings.js?v=20260930e"></script>
+</body>
+</html>

@@ -4,7 +4,8 @@
 - /api/sessions       会话持久化（按匿名访客 cookie 隔离）
 - /api/files          会话工作区文件下载 / 上传
 - /api/skills         技能管理（列表、查看、创建、编辑、删除、导入导出、复制）
-- /api/admin          管理员：审核并发布访客技能（需 X-Admin-Token）
+- /api/kb             知识库管理（创建、上传文档、检索测试）；对话时按会话选择知识库
+- /api/admin          管理员：审核并发布访客技能、公开知识库（需 X-Admin-Token）
 """
 import asyncio
 import hmac
@@ -16,7 +17,7 @@ import socket
 import time
 from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import quote
 
 import yaml
@@ -24,9 +25,10 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, Uplo
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, llm, ratelimit, skills, workspace
+from . import agent, config, db, embeddings, knowledge, llm, models, ratelimit, settings, skills, workspace
 from .ratelimit import QuotaError
 from .skills import SkillError
+from .tools import describe_call
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("agent.api")
@@ -49,12 +51,17 @@ async def _cleanup_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.conn()
-    for d in (config.WORKSPACES_DIR, config.SKILLS_PUBLIC_DIR, config.SKILLS_USERS_DIR):
+    settings.load()  # 管理员在「设置」页保存的向量 / 重排配置覆盖 .env
+    models.seed_if_empty()  # 首次启动：按 .env 的 DEEPSEEK_* 创建默认对话模型
+    for d in (config.WORKSPACES_DIR, config.SKILLS_PUBLIC_DIR, config.SKILLS_USERS_DIR, config.KB_DIR):
         d.mkdir(parents=True, exist_ok=True)
-    task = asyncio.create_task(_cleanup_loop())
+    tasks = [asyncio.create_task(_cleanup_loop()), asyncio.create_task(knowledge.vector_loop())]
+    knowledge.kick()  # 启动时补算未向量化 / 换模型后需要重算的片段
     yield
-    task.cancel()
+    for t in tasks:
+        t.cancel()
     await llm.aclose()
+    await embeddings.aclose()
 
 
 app = FastAPI(title="Chris Li AI Agent API", version="2.0.0", lifespan=lifespan, docs_url=None, redoc_url=None)
@@ -153,10 +160,12 @@ def require_admin(x_admin_token: Optional[str] = Header(None)) -> None:
 # ---------------- 健康 ----------------
 @app.get("/api/health")
 async def health(request: Request, vid: str = Depends(visitor)):
+    m = models.default_model()
     return {
         "status": "ok",
-        "model": config.DEEPSEEK_MODEL,
-        "key_configured": bool(config.DEEPSEEK_API_KEY),
+        "model": m.name if m else None,
+        "key_configured": bool(m),
+        "vector": embeddings.info(),
         "quota": ratelimit.remaining(vid),
     }
 
@@ -202,8 +211,9 @@ async def session_messages(sid: str, vid: str = Depends(visitor)):
     out = []
     for m in db.get_messages(sid):
         item = {"id": m["id"], "role": m["role"], "content": m["content"]}
+        if m["role"] == "assistant" and m.get("reasoning"):
+            item["reasoning"] = m["reasoning"][:20000]
         if m["tool_calls"]:
-            from .tools import describe_call
             item["tool_calls"] = [
                 {"id": c["id"], "name": c["function"]["name"],
                  "title": describe_call(c["function"]["name"], c["function"]["arguments"]),
@@ -218,7 +228,21 @@ async def session_messages(sid: str, vid: str = Depends(visitor)):
             item["files"] = [_file_view(sid, f) for f in meta.get("files") or []]
         out.append(item)
     existing = {f["path"] for f in workspace.listing(sid)}
+    m = models.resolve(s.get("model_id"))
+    s = {**s, "kb_ids": knowledge.resolve_selection(vid, s.get("kb_ids") or []), "model_id": m.id if m else None}
     return {"session": s, "messages": out, "existing_files": sorted(existing)}
+
+
+class SessionKbReq(BaseModel):
+    kb_ids: list[str] = Field(default_factory=list, max_length=20)
+
+
+@app.put("/api/sessions/{sid}/kbs")
+async def set_session_kbs(sid: str, req: SessionKbReq, vid: str = Depends(visitor)):
+    owned_session(sid, vid)
+    ids = knowledge.resolve_selection(vid, req.kb_ids)
+    db.set_session_kbs(sid, ids)
+    return {"kb_ids": ids}
 
 
 # ---------------- 文件 ----------------
@@ -271,9 +295,17 @@ async def delete_file(sid: str, path: str, vid: str = Depends(visitor)):
 
 
 # ---------------- 对话 ----------------
+@app.get("/api/models")
+async def list_models():
+    """对话框可选的模型（仅名称和说明，不含地址与 Key）。"""
+    return {"models": [m.public() for m in models.enabled_models()]}
+
+
 class ChatReq(BaseModel):
     session_id: Optional[str] = None
+    model_id: Optional[str] = Field(default=None, max_length=32)  # 提供时切换会话使用的模型
     message: str = Field(..., min_length=1)
+    kb_ids: Optional[list[str]] = Field(default=None, max_length=20)  # 提供时覆盖会话的知识库选择
 
 
 _active: dict[str, float] = {}  # sid -> 开始时间（防同一会话并发）
@@ -286,8 +318,6 @@ def sse(obj: dict) -> str:
 
 @app.post("/api/chat")
 async def chat(req: ChatReq, request: Request, vid: str = Depends(visitor)):
-    if not config.DEEPSEEK_API_KEY:
-        raise HTTPException(500, "服务端未配置 DEEPSEEK_API_KEY")
     text = req.message.strip()
     if not text:
         raise HTTPException(400, "消息不能为空")
@@ -298,6 +328,9 @@ async def chat(req: ChatReq, request: Request, vid: str = Depends(visitor)):
         session = owned_session(req.session_id, vid)
     else:
         session = None
+    model = models.resolve(req.model_id or (session or {}).get("model_id"))
+    if model is None:
+        raise HTTPException(503, "暂无可用的对话模型，请联系管理员配置")
     sid = session["id"] if session else None
     if sid:
         if time.time() - _active.get(sid, 0) < ACTIVE_STALE:
@@ -317,11 +350,16 @@ async def chat(req: ChatReq, request: Request, vid: str = Depends(visitor)):
     elif session["title"] == "新对话":
         db.rename_session(sid, text[:30])
         session["title"] = text[:30]
+    if req.kb_ids is not None:
+        db.set_session_kbs(sid, knowledge.resolve_selection(vid, req.kb_ids))
+    if session.get("model_id") != model.id:
+        db.set_session_model(sid, model.id)
 
     async def stream():
         try:
-            yield sse({"type": "session", "id": sid, "title": session["title"]})
-            async for ev in agent.run_turn(vid, sid, text):
+            yield sse({"type": "session", "id": sid, "title": session["title"],
+                       "model": {"id": model.id, "name": model.name}})
+            async for ev in agent.run_turn(vid, sid, text, model):
                 if ev["type"] == "tool_result":
                     ev = {**ev, "files": [_file_view(sid, f) for f in ev.get("files") or []]}
                 yield sse(ev)
@@ -440,6 +478,120 @@ async def fork_skill(name: str, req: ForkReq, request: Request, vid: str = Depen
     return new.summary(editable=True)
 
 
+# ---------------- 知识库 ----------------
+class KbCreateReq(BaseModel):
+    name: str = Field(..., min_length=1, max_length=60)
+    description: str = Field(default="", max_length=500)
+
+
+class KbPatchReq(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=60)
+    description: Optional[str] = Field(default=None, max_length=500)
+
+
+class KbSearchReq(BaseModel):
+    query: str = Field(..., min_length=1, max_length=500)
+    top_k: int = Field(default=6, ge=1, le=12)
+
+
+def _doc_view(d: dict) -> dict:
+    out = {k: d[k] for k in ("id", "filename", "ext", "size", "chars", "chunks", "created_at")}
+    if "vec_chunks" in d:
+        out["vec_chunks"] = d["vec_chunks"]
+    return out
+
+
+def _embed_model() -> Optional[str]:
+    return embeddings.model_id() if embeddings.enabled() else None
+
+
+@app.get("/api/kb")
+async def list_kbs(vid: str = Depends(visitor)):
+    return {
+        "kbs": [knowledge.view(k, vid) for k in db.kb_list_visible(vid)],
+        "limits": {
+            "max_kbs": config.KB_MAX_PER_VISITOR, "max_docs": config.KB_MAX_DOCS,
+            "quota_mb": config.KB_VISITOR_QUOTA_MB, "used_bytes": db.kb_owner_bytes(vid),
+            "upload_max_mb": config.UPLOAD_MAX_MB, "max_per_session": config.KB_MAX_PER_SESSION,
+            "exts": sorted(knowledge.ALLOWED_EXTS),
+        },
+        "vector": knowledge.vector_status(),
+    }
+
+
+@app.post("/api/kb")
+async def create_kb(req: KbCreateReq, request: Request, vid: str = Depends(visitor)):
+    write_limit(request)
+    return knowledge.view(knowledge.create(vid, req.name, req.description), vid)
+
+
+@app.get("/api/kb/{kid}")
+async def get_kb(kid: str, vid: str = Depends(visitor)):
+    kb = knowledge.get_visible(vid, kid)
+    return {**knowledge.view(kb, vid), "documents": [_doc_view(d) for d in db.kb_docs(kid, _embed_model())],
+            "vector": embeddings.info()}
+
+
+@app.patch("/api/kb/{kid}")
+async def update_kb(kid: str, req: KbPatchReq, request: Request, vid: str = Depends(visitor)):
+    write_limit(request)
+    knowledge.get_owned(vid, kid)
+    fields = {k: v.strip() for k, v in req.model_dump(exclude_none=True).items()}
+    if "name" in fields and not fields["name"]:
+        raise HTTPException(400, "名称不能为空")
+    return knowledge.view(db.kb_update(kid, fields), vid)
+
+
+@app.delete("/api/kb/{kid}")
+async def delete_kb(kid: str, request: Request, vid: str = Depends(visitor)):
+    write_limit(request)
+    knowledge.get_owned(vid, kid)
+    knowledge.remove(kid)
+    return {"ok": True}
+
+
+@app.post("/api/kb/{kid}/documents")
+async def upload_kb_doc(kid: str, request: Request, file: UploadFile = File(...), vid: str = Depends(visitor)):
+    write_limit(request)
+    kb = knowledge.get_owned(vid, kid)
+    data = await file.read(config.UPLOAD_MAX_MB * 1024 * 1024 + 1)
+    if len(data) > config.UPLOAD_MAX_MB * 1024 * 1024:
+        raise HTTPException(413, f"文件过大（上限 {config.UPLOAD_MAX_MB} MB）")
+    doc = await knowledge.add_document(vid, kb, file.filename or "document.txt", data)
+    return {**_doc_view(doc), "truncated": doc["truncated"]}
+
+
+@app.delete("/api/kb/{kid}/documents/{doc_id}")
+async def delete_kb_doc(kid: str, doc_id: str, request: Request, vid: str = Depends(visitor)):
+    write_limit(request)
+    knowledge.delete_document(knowledge.get_owned(vid, kid), doc_id)
+    return {"ok": True}
+
+
+@app.get("/api/kb/{kid}/documents/{doc_id}/raw")
+async def download_kb_doc(kid: str, doc_id: str, vid: str = Depends(visitor)):
+    doc, data = knowledge.document_file(knowledge.get_visible(vid, kid), doc_id)
+    return _download(data, doc["filename"])
+
+
+@app.get("/api/kb/{kid}/documents/{doc_id}/chunks")
+async def kb_doc_chunks(kid: str, doc_id: str, start: int = 0, count: int = 20, vid: str = Depends(visitor)):
+    knowledge.get_visible(vid, kid)
+    doc = db.kb_doc_get(kid, doc_id)
+    if not doc:
+        raise HTTPException(404, "文档不存在")
+    rows = db.kb_chunks_range(doc_id, max(0, start), max(1, min(count, 50)))
+    return {"document": _doc_view(doc), "chunks": rows}
+
+
+@app.post("/api/kb/{kid}/search")
+async def search_kb(kid: str, req: KbSearchReq, request: Request, vid: str = Depends(visitor)):
+    ratelimit.hit_window(f"kbsearch:{client_ip(request)}", 30)
+    knowledge.get_visible(vid, kid)
+    hits, mode = await knowledge.search([kid], req.query, req.top_k)
+    return {"mode": mode, "hits": [{k: h[k] for k in ("doc_id", "filename", "seq", "content")} for h in hits]}
+
+
 # ---------------- 管理员 ----------------
 @app.get("/api/admin/stats", dependencies=[Depends(require_admin)])
 async def admin_stats():
@@ -476,4 +628,257 @@ async def admin_publish(owner: str, name: str):
 @app.delete("/api/admin/skills/public/{name}", dependencies=[Depends(require_admin)])
 async def admin_unpublish(name: str):
     skills.unpublish(name)
+    return {"ok": True}
+
+
+# ---------------- 管理员：模型设置 ----------------
+class SettingsReq(BaseModel):
+    values: dict[str, Any] = Field(default_factory=dict)
+    reset: list[str] = Field(default_factory=list)   # 恢复为 .env / 默认值
+    clear: list[str] = Field(default_factory=list)   # 把密钥设为空
+
+
+class SettingsTestReq(BaseModel):
+    target: str = Field(..., pattern="^(embed|rerank)$")
+
+
+VECTOR_KEYS = {"EMBEDDING_MODEL", "EMBEDDING_BASE_URL", "EMBEDDING_API_KEY"}
+
+
+@app.get("/api/admin/settings", dependencies=[Depends(require_admin)])
+async def admin_get_settings():
+    return {"fields": settings.view(), "status": knowledge.vector_status()}
+
+
+@app.put("/api/admin/settings", dependencies=[Depends(require_admin)])
+async def admin_put_settings(req: SettingsReq):
+    try:
+        changed = settings.update(req.values, req.reset, req.clear)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if changed:
+        logger.info("settings changed by admin: %s", ", ".join(sorted(changed)))  # 只记录名称，不记录值
+    if changed & VECTOR_KEYS:
+        knowledge.kick()  # 换模型 / 新配置 Key 后补算向量
+    return {"changed": sorted(changed), "fields": settings.view(), "status": knowledge.vector_status()}
+
+
+@app.post("/api/admin/settings/test", dependencies=[Depends(require_admin)])
+async def admin_test_settings(req: SettingsTestReq):
+    """用当前已保存的配置发一次最小请求，验证连通性。"""
+    t0 = time.monotonic()
+    try:
+        if req.target == "embed":
+            vec = await embeddings.embed(["连接测试"])
+            detail = f"{config.EMBEDDING_MODEL} · 向量维度 {vec.shape[1]}"
+        else:
+            ranked = await embeddings.rerank("报销期限是多久", ["报销须在出差结束后 15 个工作日内提交", "公司年会安排在十二月"], 2)
+            if not ranked:
+                raise embeddings.EmbeddingError("重排接口没有返回结果")
+            detail = f"{config.RERANK_MODEL} · 相关文档排第 {[i for i, _ in ranked].index(0) + 1}（得分 {ranked[0][1]:.3f}）"
+    except embeddings.EmbeddingError as e:
+        return {"ok": False, "error": str(e)[:300]}
+    return {"ok": True, "detail": detail, "ms": int((time.monotonic() - t0) * 1000)}
+
+
+# ---------------- 管理员：对话模型 ----------------
+class ModelIn(BaseModel):
+    name: str = Field(..., max_length=60)
+    description: str = Field(default="", max_length=200)
+    base_url: str = Field(..., max_length=500)
+    model: str = Field(..., max_length=200)
+    api_key: Optional[str] = Field(default=None, max_length=500)  # 留空 = 不修改
+    clear_key: bool = False
+    key_env: str = Field(default="", max_length=64)
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    extra_body: dict[str, Any] = Field(default_factory=dict)
+    supports_tools: bool = True
+    replay_reasoning: bool = False
+    enabled: bool = True
+    sort: int = 0
+
+
+class ModelTestReq(ModelIn):
+    id: Optional[str] = Field(default=None, max_length=32)  # 编辑已有模型时，未填 Key 则用已保存的 Key
+
+
+def _model_call(fn, *a):
+    try:
+        return fn(*a)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+def _models_view() -> dict:
+    return {"models": [m.admin() for m in models.all_models()]}
+
+
+@app.get("/api/admin/models", dependencies=[Depends(require_admin)])
+async def admin_list_models():
+    return _models_view()
+
+
+@app.post("/api/admin/models", dependencies=[Depends(require_admin)])
+async def admin_create_model(req: ModelIn):
+    m = _model_call(models.create, req.model_dump())
+    logger.info("model created: %s (%s)", m.name, m.model)
+    return {"model": m.admin(), **_models_view()}
+
+
+@app.put("/api/admin/models/{mid}", dependencies=[Depends(require_admin)])
+async def admin_update_model(mid: str, req: ModelIn):
+    m = _model_call(models.update, mid, req.model_dump())
+    logger.info("model updated: %s (%s)", m.name, m.model)
+    return {"model": m.admin(), **_models_view()}
+
+
+@app.post("/api/admin/models/{mid}/default", dependencies=[Depends(require_admin)])
+async def admin_default_model(mid: str):
+    _model_call(models.set_default, mid)
+    return _models_view()
+
+
+@app.delete("/api/admin/models/{mid}", dependencies=[Depends(require_admin)])
+async def admin_delete_model(mid: str):
+    _model_call(models.delete, mid)
+    return _models_view()
+
+
+PING_TOOL = [{"type": "function", "function": {"name": "ping", "description": "连通性测试，收到请求时必须调用",
+                                               "parameters": {"type": "object", "properties": {}}}}]
+
+
+@app.post("/api/admin/models/test", dependencies=[Depends(require_admin)])
+async def admin_test_model(req: ModelTestReq):
+    """用表单中的配置（可未保存）发一次最小请求；支持工具时顺带验证工具调用。"""
+    existing = models.get(req.id) if req.id else None
+    cfg = _model_call(models.preview, req.model_dump(exclude={"id"}), existing)
+    t0 = time.monotonic()
+    text, called, think = "", False, False
+    prompt = "请调用 ping 工具。" if cfg.supports_tools else "只回复两个字：正常"
+    try:
+        async for kind, val in llm.stream_chat([{"role": "user", "content": prompt}],
+                                              PING_TOOL if cfg.supports_tools else None, model=cfg):
+            if kind == "delta":
+                text += val
+            elif kind == "reasoning":
+                think = True
+            elif kind == "tool_calls":
+                called = any(c["function"]["name"] == "ping" for c in val)
+            elif kind == "usage":
+                ratelimit.add_tokens(val)
+    except llm.LLMError as e:
+        return {"ok": False, "error": str(e)}
+    parts = [f"{cfg.model} 连接正常"]
+    if cfg.supports_tools:
+        parts.append("工具调用 ✓" if called else "未触发工具调用（该模型可能不支持工具，建议取消勾选）")
+    elif text:
+        parts.append(f"回复「{text.strip()[:20]}」")
+    if think:
+        parts.append("返回了思考内容")
+    return {"ok": True, "tools_ok": called, "detail": " · ".join(parts), "ms": int((time.monotonic() - t0) * 1000)}
+
+
+class KbVisibilityReq(BaseModel):
+    visibility: str = Field(..., pattern="^(private|public)$")
+
+
+@app.get("/api/admin/kb", dependencies=[Depends(require_admin)])
+async def admin_list_kbs():
+    return {"kbs": [{**knowledge.view(k), "owner": k["owner"]} for k in db.kb_list_all()]}
+
+
+@app.post("/api/admin/kb/{kid}/visibility", dependencies=[Depends(require_admin)])
+async def admin_kb_visibility(kid: str, req: KbVisibilityReq):
+    if not knowledge.KID_RE.match(kid) or not db.kb_get(kid):
+        raise HTTPException(404, "知识库不存在")
+    return knowledge.view(db.kb_update(kid, {"visibility": req.visibility}))
+
+
+@app.delete("/api/admin/kb/{kid}", dependencies=[Depends(require_admin)])
+async def admin_delete_kb(kid: str):
+    if not knowledge.KID_RE.match(kid) or not db.kb_get(kid):
+        raise HTTPException(404, "知识库不存在")
+    knowledge.remove(kid)
+    return {"ok": True}
+
+
+# ---------------- 首页卡片（AI工具 / AI作品 / AI课程） ----------------
+def _valid_section(section: str) -> str:
+    if section not in db.CARD_SECTIONS:
+        raise HTTPException(400, f"section 必须是 {', '.join(db.CARD_SECTIONS)} 之一")
+    return section
+
+
+class CardIn(BaseModel):
+    section: str
+    title: str = Field(min_length=1, max_length=120)
+    description: str = Field(default="", max_length=500)
+    url: str = Field(default="", max_length=1000)
+    icon: str = Field(default="", max_length=16)
+    tag: str = Field(default="", max_length=40)
+    category: str = Field(default="", max_length=40)
+    sort: int = 0
+    enabled: bool = True
+
+
+class CardPatch(BaseModel):
+    section: Optional[str] = None
+    title: Optional[str] = Field(default=None, max_length=120)
+    description: Optional[str] = Field(default=None, max_length=500)
+    url: Optional[str] = Field(default=None, max_length=1000)
+    icon: Optional[str] = Field(default=None, max_length=16)
+    tag: Optional[str] = Field(default=None, max_length=40)
+    category: Optional[str] = Field(default=None, max_length=40)
+    sort: Optional[int] = None
+    enabled: Optional[bool] = None
+
+
+# 公开只读：展示页拉取启用中的卡片
+@app.get("/api/cards")
+async def public_cards(section: Optional[str] = None):
+    if section is not None:
+        _valid_section(section)
+    return {"cards": db.list_cards(section=section, enabled_only=True)}
+
+
+# 管理端：全部卡片（含未启用）
+@app.get("/api/admin/cards", dependencies=[Depends(require_admin)])
+async def admin_list_cards(section: Optional[str] = None):
+    if section is not None:
+        _valid_section(section)
+    return {"cards": db.list_cards(section=section, enabled_only=False)}
+
+
+@app.post("/api/admin/cards", dependencies=[Depends(require_admin)])
+async def admin_create_card(card: CardIn):
+    _valid_section(card.section)
+    return db.create_card(
+        section=card.section, title=card.title.strip(), description=card.description,
+        url=card.url.strip(), icon=card.icon.strip(), tag=card.tag.strip(),
+        category=card.category.strip(), sort=card.sort, enabled=card.enabled,
+    )
+
+
+@app.put("/api/admin/cards/{card_id}", dependencies=[Depends(require_admin)])
+async def admin_update_card(card_id: int, patch: CardPatch):
+    if db.get_card(card_id) is None:
+        raise HTTPException(404, "卡片不存在")
+    fields = patch.model_dump(exclude_none=True)
+    if "section" in fields:
+        _valid_section(fields["section"])
+    for k in ("title", "url", "icon", "tag", "category"):
+        if k in fields and isinstance(fields[k], str):
+            fields[k] = fields[k].strip()
+    return db.update_card(card_id, fields)
+
+
+@app.delete("/api/admin/cards/{card_id}", dependencies=[Depends(require_admin)])
+async def admin_delete_card(card_id: int):
+    if db.get_card(card_id) is None:
+        raise HTTPException(404, "卡片不存在")
+    db.delete_card(card_id)
     return {"ok": True}

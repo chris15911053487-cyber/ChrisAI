@@ -5,30 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Agent 对话｜Chris Li</title>
 <meta name="description" content="与 Chris Li 的企业 AI 助手对话——支持技能（Skills）：生成 Word/Excel 文档、执行脚本、创建自己的技能。">
-<meta name="theme-color" content="#050812">
+<meta name="theme-color" content="#FAFAF9">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23050812'/><text x='50%25' y='56%25' font-size='15' font-family='monospace' fill='%2368e7ff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
-<link rel="stylesheet" href="agent.css">
+<link rel="stylesheet" href="tokens.css?v=20260930e">
+<link rel="stylesheet" href="agent.css?v=20260930e">
+<link rel="stylesheet" href="sidebar.css?v=20260930e">
 </head>
-<body>
-<div class="bg-glow"></div>
-<div class="bg-grid"></div>
+<body data-nav="agent">
 
 <header class="bar">
   <div class="left">
-    <button class="iconbtn only-mobile" id="sideToggle" aria-label="会话列表" aria-controls="side" aria-expanded="false">☰</button>
-    <span class="logo">CL</span>
-    <h1>Chris Li · AI Agent</h1>
+    <button class="iconbtn only-mobile" id="sideToggle" aria-label="会话列表" aria-controls="side" aria-expanded="false"><i data-i="sidebar"></i></button>
+    <a class="logo" href="index.html" aria-label="返回首页">CL</a>
+    <h1>AI Agent<small>Chris Li</small></h1>
   </div>
   <div class="status" id="status" role="status"><i id="dot"></i><span id="statusText">连接中…</span></div>
   <div class="actions">
-    <a class="iconbtn" href="skills.html">🧩 技能</a>
-    <a class="iconbtn hide-mobile" href="ai-agent.html">← 返回</a>
+    <a class="iconbtn" href="knowledge.html"><i data-i="book"></i><span class="hide-mobile">知识库</span></a>
+    <a class="iconbtn" href="skills.html"><i data-i="layers"></i><span class="hide-mobile">技能</span></a>
+    <a class="iconbtn ghost hide-mobile" href="index.html"><i data-i="arrow-left"></i>首页</a>
   </div>
 </header>
 
 <div class="layout">
   <aside class="side" id="side" aria-label="会话列表">
-    <button class="newbtn" id="newBtn">＋ 新对话</button>
+    <button class="newbtn" id="newBtn"><i data-i="plus"></i>新对话</button>
     <div class="side-title">历史会话</div>
     <ul class="sessions" id="sessions"></ul>
     <div class="side-foot" id="quota"></div>
@@ -41,21 +42,28 @@
     </div>
 
     <div class="composer">
+      <div class="kb-bar" id="kbBar">
+        <button class="kb-toggle model-toggle" id="modelToggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="modelPop" hidden></button>
+        <div class="kb-pop" id="modelPop" role="dialog" aria-label="选择模型" hidden></div>
+        <button class="kb-toggle" id="kbToggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="kbPop"><i data-i="book"></i>知识库</button>
+        <div class="kb-pop" id="kbPop" role="dialog" aria-label="选择知识库" hidden></div>
+      </div>
       <div class="attach-list" id="attachList"></div>
       <div class="composer-inner">
-        <button class="attach" id="attachBtn" title="上传文件（供技能处理）" aria-label="上传文件">📎</button>
+        <button class="attach" id="attachBtn" title="上传文件（供技能处理）" aria-label="上传文件"><i data-i="paperclip"></i></button>
         <input type="file" id="fileInput" hidden>
         <textarea id="input" rows="1" placeholder="输入你的问题，或让我用技能生成文档… Enter 发送，Shift+Enter 换行" aria-label="消息"></textarea>
-        <button class="send" id="send" title="发送" aria-label="发送">➤</button>
+        <button class="send" id="send" title="发送" aria-label="发送"><i data-i="arrow-up"></i></button>
       </div>
-      <div class="hint">回答由 DeepSeek 生成，可能存在误差。脚本在隔离沙箱中运行，生成的文件保留 7 天。</div>
+      <div class="hint">回答由 AI 模型生成，可能存在误差。脚本在隔离沙箱中运行，生成的文件保留 7 天。</div>
     </div>
   </main>
 </div>
 
 <template id="welcomeTpl">
   <div class="welcome" id="welcome">
-    <h2>你好，我是 <span class="gradient">Chris 的 AI 助手</span></h2>
+    <div class="w-logo" aria-hidden="true">CL</div>
+    <h2>你好，我是 Chris 的 AI 助手</h2>
     <p>我可以回答企业 AI、SAP Business One、知识库与 Agent 落地的问题，也能调用<b>技能</b>帮你生成 Word / Excel 文档、处理数据，甚至创建你自己的技能。</p>
     <div class="suggest">
       <button class="chip">企业想落地 AI，第一步该做什么？</button>
@@ -70,6 +78,8 @@
 
 <script src="vendor/marked-14.1.4.umd.js"></script>
 <script src="vendor/purify-3.2.3.min.js"></script>
-<script src="agent.js"></script>
+<script src="icons.js?v=20260930e"></script>
+<script src="sidebar.js?v=20260930e"></script>
+<script src="agent.js?v=20260930e"></script>
 </body>
 </html>

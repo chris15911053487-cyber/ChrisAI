@@ -9,6 +9,12 @@
   let busy = false;
   let abortCtl = null;
   let pendingUploads = []; // 本轮已上传但尚未发送的文件路径
+  let kbAll = [];          // 可用知识库
+  let kbSel = [];          // 当前会话选择的知识库 ID
+  let kbMax = 5;
+  let modelAll = [];       // 可选对话模型
+  let modelSel = null;     // 当前会话使用的模型 ID
+  const MODEL_PREF = 'cl_model';
 
   /* ---------------- 工具函数 ---------------- */
   const el = (tag, cls, text) => {
@@ -36,6 +42,8 @@
     if (!r.ok) throw new Error((data && data.detail) || ('请求失败（' + r.status + '）'));
     return data;
   }
+  const jsend = (path, body, method = 'POST') =>
+    api(path, {method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
 
   /* ---------------- Markdown（净化后渲染） ---------------- */
   marked.setOptions({gfm: true, breaks: true});
@@ -47,21 +55,22 @@
 
   /* ---------------- 文件卡片 ---------------- */
   const FILE_KIND = {
-    docx: ['W', '#5a9bff'], doc: ['W', '#5a9bff'], xlsx: ['X', '#55e6b1'], xls: ['X', '#55e6b1'], csv: ['CSV', '#55e6b1'],
-    pptx: ['P', '#ffa860'], pdf: ['PDF', '#ff7b7b'], png: ['IMG', '#a97cff'], jpg: ['IMG', '#a97cff'], jpeg: ['IMG', '#a97cff'],
-    gif: ['IMG', '#a97cff'], webp: ['IMG', '#a97cff'], md: ['MD', '#68e7ff'], txt: ['TXT', '#8fa0bb'], json: ['{}', '#ffd37a'],
-    py: ['PY', '#ffd37a'], html: ['<>', '#ffa860'], zip: ['ZIP', '#8fa0bb'],
+    docx: ['W', '#185ABD'], doc: ['W', '#185ABD'], xlsx: ['X', '#107C41'], xls: ['X', '#107C41'], csv: ['CSV', '#107C41'],
+    pptx: ['P', '#C43E1C'], pdf: ['PDF', '#B91C1C'], png: ['IMG', '#6D28D9'], jpg: ['IMG', '#6D28D9'], jpeg: ['IMG', '#6D28D9'],
+    gif: ['IMG', '#6D28D9'], webp: ['IMG', '#6D28D9'], md: ['MD', '#27272A'], txt: ['TXT', '#71717A'], json: ['{}', '#A16207'],
+    py: ['PY', '#1E40AF'], html: ['<>', '#C2410C'], zip: ['ZIP', '#52525B'],
   };
   function fileCard(f) {
     const ext = (f.path.split('.').pop() || '').toLowerCase();
-    const [label, color] = FILE_KIND[ext] || ['FILE', '#8fa0bb'];
+    const [label, color] = FILE_KIND[ext] || ['FILE', '#71717A'];
     const a = el('a', 'file');
     a.href = f.url; a.setAttribute('download', baseName(f.path)); a.dataset.path = f.path;
     a.title = '下载 ' + f.path;
     const fi = el('span', 'fi', label); fi.style.background = color;
     const info = el('span');
     info.append(el('div', 'fn', baseName(f.path)), el('div', 'fs', fmtSize(f.size) + (f.path.includes('/') ? ' · ' + f.path : '')));
-    a.append(fi, info, el('span', 'dl', '⤓'));
+    const dl = el('span', 'dl'); dl.innerHTML = icon('download');
+    a.append(fi, info, dl);
     const wrap = el('div');
     wrap.style.display = 'contents';
     wrap.append(a);
@@ -89,7 +98,7 @@
     m.append(el('div', 'av', 'AI'), body);
     inner.append(m);
 
-    let cur = null, raw = '', raf = 0, typing = null;
+    let cur = null, raw = '', raf = 0, typing = null, thinkEl = null;
     const steps = {};
     const caret = el('span', 'caret');
 
@@ -110,7 +119,7 @@
         body.append(typing); scrollDown(true);
       },
       text(delta, whole) {
-        clearTyping();
+        clearTyping(); this.endThink();
         if (!cur) { cur = el('div', 'bubble md'); raw = ''; body.append(cur); }
         raw += delta;
         if (whole) flush(); else if (!raf) raf = requestAnimationFrame(flush);
@@ -121,8 +130,20 @@
         if (cur && !raw.trim()) cur.remove();
         cur = null;
       },
+      think(delta) {
+        clearTyping();
+        if (!thinkEl) {
+          if (cur) this.endText();
+          thinkEl = el('details', 'think'); thinkEl.open = busy;
+          thinkEl.append(el('summary', '', '思考过程'), el('div', 'tb'));
+          body.append(thinkEl);
+        }
+        thinkEl.lastChild.textContent += delta;
+        scrollDown();
+      },
+      endThink() { if (thinkEl) { thinkEl.open = false; thinkEl = null; } },
       step(call) {
-        this.endText(); clearTyping();
+        this.endText(); clearTyping(); this.endThink();
         const d = el('details', 'step run');
         const sm = el('summary');
         const s = el('span', 's', '执行中…');
@@ -150,9 +171,20 @@
         if (!st) return;
         st.d.classList.remove('run');
         st.d.classList.add(r.ok ? 'ok' : 'fail');
-        st.d.querySelector('.ico').textContent = r.ok ? '✓' : '!';
+        st.d.querySelector('.ico').innerHTML = r.ok ? icon('check') : '!';
         st.s.textContent = r.summary || (r.ok ? '完成' : '失败');
         const dt = r.detail || {};
+        if (Array.isArray(dt.hits) && dt.hits.length) {
+          st.det.append(el('div', 'lbl', dt.query ? '检索结果' + (dt.mode ? '（' + dt.mode + '）' : '') : '读取内容'));
+          const hits = el('div', 'hits');
+          dt.hits.forEach((h, i) => {
+            const x = el('div', 'hit');
+            x.append(el('div', 'h', (dt.query ? '[' + (i + 1) + '] ' : '') + (h.kb ? h.kb + ' · ' : '') + h.file + ' · 片段 #' + h.seq));
+            x.append(el('div', 'c', h.snippet));
+            hits.append(x);
+          });
+          st.det.append(hits);
+        }
         if (dt.stdout) { st.det.append(el('div', 'lbl', 'stdout')); st.det.append(el('pre', '', dt.stdout)); }
         if (dt.stderr) { st.det.append(el('div', 'lbl', 'stderr')); st.det.append(el('pre', 'e', dt.stderr)); }
         if (r.files && r.files.length) {
@@ -199,7 +231,7 @@
       const li = el('li'); if (s.id === sid) li.classList.add('active');
       const open = el('button', 's-open', s.title || '新对话'); open.title = s.title;
       open.addEventListener('click', () => { location.hash = 's=' + s.id; closeSide(); });
-      const del = el('button', 's-del', '✕'); del.title = '删除会话'; del.setAttribute('aria-label', '删除会话 ' + s.title);
+      const del = el('button', 's-del'); del.innerHTML = icon('x'); del.title = '删除会话'; del.setAttribute('aria-label', '删除会话 ' + s.title);
       del.addEventListener('click', async () => {
         if (!confirm('删除该会话及其生成的文件？')) return;
         try {
@@ -222,6 +254,8 @@
   function newChat() {
     if (busy) return;
     setSid(null); pendingUploads = []; renderAttach();
+    kbSel = []; renderKb();
+    modelSel = preferredModel(); renderModel();
     showWelcome(); loadSessions(); input.focus(); closeSide();
   }
 
@@ -231,6 +265,10 @@
     try { data = await api('/api/sessions/' + id + '/messages'); }
     catch (e) { toast(e.message, true); newChat(); return; }
     sid = id; pendingUploads = []; renderAttach();
+    kbSel = (data.session && data.session.kb_ids) || []; renderKb();
+    const sm = data.session && data.session.model_id;
+    // 模型列表可能尚未加载完：先采用会话的模型，loadModels 完成后再校验
+    modelSel = sm && (!modelAll.length || modelAll.some(m => m.id === sm)) ? sm : preferredModel(); renderModel();
     inner.replaceChildren();
     const existing = new Set(data.existing_files || []);
     let bot = null;
@@ -238,6 +276,7 @@
       if (m.role === 'user') { if (bot) bot.done(); bot = null; addUser(m.content || ''); continue; }
       if (!bot) bot = botMessage();
       if (m.role === 'assistant') {
+        if (m.reasoning) { bot.think(m.reasoning); bot.endThink(); }
         if (m.content) { bot.text(m.content, true); bot.endText(); }
         (m.tool_calls || []).forEach(c => bot.step(c));
       } else if (m.role === 'tool') {
@@ -262,10 +301,158 @@
     if (id && id !== sid) openSession(id);
   });
 
+  /* ---------------- 知识库选择 ---------------- */
+  const kbToggle = $('kbToggle'), kbPop = $('kbPop');
+
+  async function loadKbs() {
+    try { const d = await api('/api/kb'); kbAll = d.kbs; kbMax = d.limits.max_per_session || 5; }
+    catch { kbAll = []; }
+    renderKb();
+  }
+
+  function renderKb() {
+    const bar = $('kbBar');
+    bar.querySelectorAll('.kb-chip').forEach(c => c.remove());
+    kbSel = kbSel.filter(id => kbAll.some(k => k.id === id) || !kbAll.length);
+    for (const id of kbSel) {
+      const kb = kbAll.find(k => k.id === id);
+      if (!kb) continue;
+      const chip = el('span', 'kb-chip'); chip.title = kb.name + (kb.description ? '：' + kb.description : '');
+      chip.innerHTML = icon('book');
+      chip.append(el('span', '', kb.name));
+      const x = el('button'); x.type = 'button'; x.innerHTML = icon('x'); x.setAttribute('aria-label', '取消使用知识库 ' + kb.name);
+      x.addEventListener('click', () => setKbs(kbSel.filter(k => k !== id)));
+      chip.append(x);
+      bar.insertBefore(chip, kbPop);
+    }
+    kbToggle.lastChild.textContent = kbSel.length ? '' : '知识库';
+    kbToggle.title = kbSel.length ? '添加 / 管理知识库' : '选择知识库，AI 将基于其中的文档回答';
+    kbToggle.setAttribute('aria-label', kbToggle.title);
+    input.placeholder = kbSel.length ? '基于所选知识库提问… Enter 发送，Shift+Enter 换行'
+      : (matchMedia('(max-width: 600px)').matches ? '输入你的问题…' : '输入你的问题，或让我用技能生成文档… Enter 发送，Shift+Enter 换行');
+    if (!kbPop.hidden) renderKbPop();
+  }
+
+  function renderKbPop() {
+    kbPop.replaceChildren();
+    const ph = el('div', 'ph', '为本会话选择知识库（最多 ' + kbMax + ' 个）');
+    const manage = el('a', '', '管理'); manage.href = 'knowledge.html';
+    ph.append(manage); kbPop.append(ph);
+    if (!kbAll.length) {
+      const n = el('div', 'none', '还没有可用的知识库。');
+      const a = el('a', '', '去创建知识库并上传文档 →'); a.href = 'knowledge.html';
+      n.append(el('br'), a); kbPop.append(n); return;
+    }
+    for (const kb of kbAll) {
+      const lab = el('label', 'kb-opt');
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = kbSel.includes(kb.id);
+      cb.disabled = !cb.checked && kbSel.length >= kbMax;
+      cb.addEventListener('change', () => setKbs(cb.checked ? [...kbSel, kb.id] : kbSel.filter(k => k !== kb.id)));
+      const info = el('div');
+      const t = el('div', 't', kb.name);
+      if (!kb.editable) t.append(el('span', 'badge public', '公共'));
+      info.append(t, el('div', 'm', kb.docs + ' 篇文档' + (kb.description ? ' · ' + kb.description.slice(0, 40) : '')));
+      lab.append(cb, info);
+      kbPop.append(lab);
+    }
+  }
+
+  async function setKbs(ids) {
+    const prev = kbSel;
+    kbSel = ids.slice(0, kbMax);
+    renderKb();
+    if (!sid) return; // 新会话：随首条消息一起提交
+    try { kbSel = (await jsend('/api/sessions/' + sid + '/kbs', {kb_ids: kbSel}, 'PUT')).kb_ids; renderKb(); }
+    catch (e) { kbSel = prev; renderKb(); toast(e.message, true); }
+  }
+
+  function toggleKbPop(open) {
+    open = open != null ? open : kbPop.hidden;
+    if (open) { renderKbPop(); loadKbs(); }
+    togglePop(kbPop, kbToggle, open);
+  }
+  kbToggle.addEventListener('click', e => { e.stopPropagation(); toggleKbPop(); });
+  document.addEventListener('click', e => { if (!kbPop.hidden && !$('kbBar').contains(e.target)) toggleKbPop(false); });
+  kbPop.addEventListener('keydown', e => { if (e.key === 'Escape') { toggleKbPop(false); kbToggle.focus(); } });
+
+  /* ---------------- 模型选择 ---------------- */
+  const modelToggle = $('modelToggle'), modelPop = $('modelPop');
+  const curModel = () => modelAll.find(m => m.id === modelSel);
+
+  // 新对话用：上次手动选择的模型（仍可用时），否则默认模型
+  function preferredModel() {
+    let pref = null; try { pref = localStorage.getItem(MODEL_PREF); } catch {}
+    if (pref && modelAll.some(m => m.id === pref)) return pref;
+    const d = modelAll.find(m => m.is_default) || modelAll[0];
+    return d ? d.id : null;
+  }
+
+  async function loadModels() {
+    try { modelAll = (await api('/api/models')).models; } catch { modelAll = []; }
+    if (!modelSel || !modelAll.some(m => m.id === modelSel)) modelSel = preferredModel();
+    renderModel();
+  }
+
+  function renderModel() {
+    const m = curModel();
+    modelToggle.hidden = !m;
+    if (!m) return;
+    modelToggle.replaceChildren();
+    modelToggle.insertAdjacentHTML('beforeend', icon('zap'));
+    modelToggle.append(el('span', '', m.name), el('span', 'car', '▾'));
+    modelToggle.title = '当前模型：' + m.name + (m.description ? '（' + m.description + '）' : '') + '，点击切换';
+    modelToggle.setAttribute('aria-label', modelToggle.title);
+    const st = $('statusText'); if (!$('dot').classList.contains('off')) st.textContent = '在线 · ' + m.name;
+    if (!modelPop.hidden) renderModelPop();
+  }
+
+  function renderModelPop() {
+    modelPop.replaceChildren(el('div', 'ph', '选择模型（对当前会话生效）'));
+    for (const m of modelAll) {
+      const lab = el('label', 'kb-opt');
+      const rb = el('input'); rb.type = 'radio'; rb.name = 'model'; rb.checked = m.id === modelSel;
+      rb.addEventListener('change', () => pickModel(m.id));
+      const info = el('div');
+      const t = el('div', 't', m.name);
+      if (m.is_default) t.append(el('span', 'badge user', '默认'));
+      if (!m.supports_tools) t.append(el('span', 'badge', '仅对话'));
+      info.append(t);
+      if (m.description) info.append(el('div', 'm', m.description));
+      lab.append(rb, info);
+      modelPop.append(lab);
+    }
+  }
+
+  function pickModel(id) {
+    modelSel = id;
+    try { localStorage.setItem(MODEL_PREF, id); } catch {}
+    renderModel(); togglePop(modelPop, modelToggle, false); input.focus();
+    const m = curModel();
+    if (m && !m.supports_tools) toast('「' + m.name + '」不支持工具：技能、文件生成和知识库检索将不可用');
+    else if (m) toast('已切换到 ' + m.name + (sid ? '，下一条消息生效' : ''));
+  }
+
+  function togglePop(pop, btn, open) {
+    open = open != null ? open : pop.hidden;
+    for (const [p, b] of [[modelPop, modelToggle], [kbPop, kbToggle]]) {   // 同时只开一个
+      if (p !== pop && !p.hidden) { p.hidden = true; b.setAttribute('aria-expanded', 'false'); }
+    }
+    pop.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) { const f = pop.querySelector('input:checked, input:not(:disabled)'); if (f) f.focus(); }
+  }
+  modelToggle.addEventListener('click', e => {
+    e.stopPropagation();
+    if (modelPop.hidden) { renderModelPop(); loadModels(); }
+    togglePop(modelPop, modelToggle);
+  });
+  modelPop.addEventListener('keydown', e => { if (e.key === 'Escape') { togglePop(modelPop, modelToggle, false); modelToggle.focus(); } });
+  document.addEventListener('click', e => { if (!modelPop.hidden && !$('kbBar').contains(e.target)) togglePop(modelPop, modelToggle, false); });
+
   /* ---------------- 上传 ---------------- */
   function renderAttach(uploading) {
     attachList.replaceChildren();
-    pendingUploads.forEach(p => attachList.append(el('span', 'att', '📄 ' + baseName(p))));
+    pendingUploads.forEach(p => { const a = el('span', 'att'); a.innerHTML = icon('file'); a.append(baseName(p)); attachList.append(a); });
     if (uploading) attachList.append(el('span', 'att up', '上传中：' + uploading + '…'));
   }
   $('attachBtn').addEventListener('click', () => { if (!busy) fileInput.click(); });
@@ -288,7 +475,7 @@
   function setBusy(b) {
     busy = b;
     sendBtn.classList.toggle('stop', b);
-    sendBtn.textContent = b ? '■' : '➤';
+    sendBtn.innerHTML = icon(b ? 'square' : 'arrow-up');
     sendBtn.title = b ? '停止' : '发送';
     sendBtn.setAttribute('aria-label', sendBtn.title);
     $('newBtn').disabled = b;
@@ -313,7 +500,7 @@
       const resp = await fetch('/api/chat', {
         method: 'POST', credentials: 'same-origin', signal: abortCtl.signal,
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({session_id: sid, message: text}),
+        body: JSON.stringify({session_id: sid, message: text, kb_ids: kbSel, model_id: modelSel}),
       });
       if (!resp.ok || !resp.body) {
         let msg = '请求失败（' + resp.status + '）';
@@ -352,11 +539,19 @@
 
   function handleEvent(ev, bot) {
     switch (ev.type) {
-      case 'session': if (ev.id !== sid) setSid(ev.id); loadSessions(); break;
+      case 'session':
+        if (ev.id !== sid) setSid(ev.id);
+        if (ev.model && ev.model.id !== modelSel) {   // 所选模型已被停用，服务端改用了默认模型
+          const was = curModel();
+          modelSel = ev.model.id; loadModels();
+          toast((was ? '「' + was.name + '」已不可用，' : '') + '本次使用 ' + ev.model.name);
+        }
+        loadSessions(); break;
+      case 'reasoning': bot.think(ev.text); break;
       case 'delta': bot.text(ev.text); break;
       case 'tool_call': bot.step(ev); break;
       case 'tool_result': bot.result(ev); break;
-      case 'skills_changed': toast('技能已保存 · 可在「🧩 技能」页面查看和编辑'); break;
+      case 'skills_changed': toast('技能已保存 · 可在「技能」页面查看和编辑'); break;
       case 'done': setQuota(ev.quota); break;
       case 'error': bot.error(ev.message || '未知错误'); break;
     }
@@ -369,6 +564,7 @@
   /* ---------------- 交互绑定 ---------------- */
   const autosize = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 180) + 'px'; };
   input.addEventListener('input', autosize);
+  if (matchMedia('(max-width: 600px)').matches) input.placeholder = '输入你的问题…';
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
   });
@@ -386,16 +582,27 @@
   api('/api/health').then(d => {
     const ok = d && d.status === 'ok' && d.key_configured;
     $('dot').classList.toggle('off', !ok);
-    $('statusText').textContent = ok ? '在线 · ' + (d.model || 'deepseek') : '未配置密钥';
+    $('statusText').textContent = ok ? '在线 · ' + ((curModel() || {}).name || d.model) : '暂无可用模型';
     setQuota(d.quota);
   }).catch(() => { $('dot').classList.add('off'); $('statusText').textContent = '离线'; });
 
+  loadModels();
   const initial = sidFromHash();
+  const params = new URLSearchParams(location.search);
+  const kbParam = params.get('kb');
   if (initial) openSession(initial); else { showWelcome(); loadSessions(); }
-  const q = new URLSearchParams(location.search).get('q');
+  // 从知识库页"在对话中使用"跳转过来：新会话预选该知识库
+  loadKbs().then(() => {
+    if (kbParam && /^[a-f0-9]{32}$/.test(kbParam) && !initial && kbAll.some(k => k.id === kbParam)) {
+      kbSel = [kbParam]; renderKb();
+      const kb = kbAll.find(k => k.id === kbParam);
+      toast('已选择知识库「' + kb.name + '」，直接提问即可');
+    }
+  });
+  const q = params.get('q');
   if (q) {
     input.value = q.slice(0, 2000); autosize();
-    history.replaceState(null, '', location.pathname + location.hash);
   }
+  if (q || kbParam) history.replaceState(null, '', location.pathname + location.hash);
   input.focus();
 })();

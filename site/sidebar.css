@@ -1,0 +1,40 @@
+/* 共享一级菜单侧边栏（agent / skills / courses / works / tools 共用）—— 依赖 tokens.css */
+:root{ --nav-w:76px; }
+
+.navrail{
+  position:fixed; top:60px; left:0; bottom:0; width:var(--nav-w); z-index:18;
+  display:flex; flex-direction:column; gap:2px; padding:12px 8px;
+  border-right:1px solid var(--line); background:var(--bg);
+}
+.navrail .nav-item{
+  position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+  padding:10px 4px; border-radius:10px; cursor:pointer; text-align:center; color:var(--text-3);
+  transition:background var(--dur) var(--ease),color var(--dur) var(--ease);
+}
+.navrail .nav-item:hover{ background:rgba(10,10,10,.045); color:var(--text) }
+.navrail .nav-item .ic{ display:grid; place-items:center; line-height:1 }
+.navrail .nav-item .ic .i{ width:19px; height:19px }
+.navrail .nav-item .tx{ font-size:11px; line-height:1.2; font-weight:500 }
+.navrail .nav-item.active{ color:var(--text); background:var(--surface); box-shadow:var(--sh-1),0 0 0 1px var(--line) }
+.navrail .nav-item.active::before{
+  content:""; position:absolute; left:-8px; top:12px; bottom:12px; width:2px; border-radius:0 2px 2px 0; background:var(--text);
+}
+
+.navrail .nav-item.bottom{ margin-top:auto }   /* 设置：固定在左下角 */
+
+.nav-scrim{ display:none }
+
+@media(min-width:861px){
+  .layout{ margin-left:var(--nav-w) }          /* agent.html */
+  body > .wrap{ padding-left:var(--nav-w) }     /* skills / works / tools / courses */
+}
+
+@media(max-width:860px){
+  .navrail{ transform:translateX(-100%); transition:transform .25s var(--ease); width:220px; padding:12px; z-index:22 }
+  .navrail.open{ transform:none; box-shadow:var(--sh-3) }
+  .navrail .nav-item{ flex-direction:row; justify-content:flex-start; gap:12px; padding:11px 12px }
+  .navrail .nav-item .tx{ font-size:14px }
+  .navrail .nav-item.active::before{ left:-12px }
+  .nav-scrim{ display:none; position:fixed; inset:60px 0 0; background:rgba(10,10,10,.25); z-index:21 }
+  .nav-scrim.show{ display:block }
+}

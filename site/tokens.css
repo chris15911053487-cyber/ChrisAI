@@ -1,0 +1,55 @@
+/* ==========================================================
+   设计系统 Tokens —— 全站共用（首页 + 应用页）
+   风格：浅色 · 精密极简。灰阶为主，只保留一个强调色。
+   ========================================================== */
+
+/* 自托管字体（OFL 许可）：仅拉丁字符子集，中文走系统字体 */
+@font-face{font-family:"Inter";src:url("fonts/inter-var-latin.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:"JetBrains Mono";src:url("fonts/jetbrains-mono-var-latin.woff2") format("woff2");font-weight:100 800;font-style:normal;font-display:swap}
+
+:root{
+  /* 颜色：中性灰阶 */
+  --bg:#FAFAF9;          /* 页面底色（暖白） */
+  --bg-2:#F4F4F2;        /* 次级底色 / 分区 */
+  --surface:#FFFFFF;     /* 卡片 */
+  --text:#0A0A0A;        /* 主文字 */
+  --text-2:#52525B;      /* 次要文字 */
+  --text-3:#8A8A93;      /* 辅助文字 */
+  --line:#E7E7E4;        /* 细分隔线 */
+  --line-2:#D6D6D1;      /* 强调边框 */
+
+  /* 唯一强调色：钴蓝 */
+  --accent:#2B59FF;
+  --accent-ink:#1E40D8;
+  --accent-soft:rgba(43,89,255,.08);
+  --accent-ring:rgba(43,89,255,.28);
+
+  /* 语义色（仅用于状态，不做装饰） */
+  --ok:#15803D;--ok-soft:rgba(21,128,61,.08);
+  --warn:#B45309;--warn-soft:rgba(180,83,9,.08);
+  --err:#DC2626;--err-soft:rgba(220,38,38,.07);
+
+  /* 字体 */
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;
+  --mono:"JetBrains Mono","SF Mono",Menlo,Consolas,"PingFang SC",monospace;
+
+  /* 圆角 */
+  --r-sm:8px;--r:12px;--r-lg:16px;--r-full:999px;
+
+  /* 阴影：极轻，用于层级而不是装饰 */
+  --sh-1:0 1px 2px rgba(10,10,10,.04);
+  --sh-2:0 1px 2px rgba(10,10,10,.04),0 8px 24px -8px rgba(10,10,10,.08);
+  --sh-3:0 1px 2px rgba(10,10,10,.04),0 24px 64px -16px rgba(10,10,10,.16);
+
+  /* 动效 */
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --dur:.2s;
+}
+
+*{box-sizing:border-box}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-feature-settings:"cv11","ss01"}
+::selection{background:rgba(43,89,255,.16)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+/* 线性图标（内联 SVG） */
+.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}

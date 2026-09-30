@@ -9,9 +9,11 @@ Chris Li 的个人网站 + 企业级 AI Agent 平台。前端是一个静态展�
 ## 功能特性
 
 - **个人展示站点**：介绍、能力、AI Agent 专区、联系方式（`site/`，nginx 提供）。
+- **多模型**：对话模型在「设置」页管理，支持任意 OpenAI 兼容接口（DeepSeek、通义千问、Kimi、GLM、豆包、OpenAI、OpenRouter 等），可设默认模型，访客在对话框中按会话切换。
 - **AI Agent 对话**：`/api/chat` 基于 SSE 流式返回，支持多轮工具调用（最多 `MAX_TOOL_ROUNDS` 轮）。
 - **技能（Skill）系统**：内置技能（`skill-creator`、`xlsx-builder`、`docx-report`），并支持访客创建、编辑、导入导出、复制自己的技能，管理员可审核发布为公共技能。
 - **安全沙箱执行**：技能脚本在独立的 Runner 容器中运行——无外网、无密钥、只读根文件系统、每任务独立 UID、内存/CPU/进程数受限。
+- **知识库**：上传 PDF / Word / Excel / PPT / Markdown 等文档，对话中选择知识库后 AI 先检索再回答并标注出处。检索为关键词（SQLite FTS5）+ 语义向量混合，RRF 融合后可选 reranker 重排；向量服务不可用时自动退回关键词检索。
 - **会话持久化**：按匿名访客 cookie 隔离会话，数据存于 SQLite。
 - **文件工作区**：每会话独立工作区，支持文件上传/下载，带配额与 TTL 自动清理。
 - **多层限流与配额**：nginx 层 + 应用层（每 IP 每分钟、每访客每日轮数、全局每日 token 上限等）。
@@ -41,7 +43,7 @@ ChrisAI/
 ├── docker-compose.yml       # 三服务编排
 ├── Dockerfile               # 站点镜像（nginx）
 ├── nginx.conf               # 站点与 API 反向代理、限流、安全头
-├── site/                    # 静态前端（index.html / ai-agent.html / skills.html 等）
+├── site/                    # 静态前端（index.html / agent.html / skills.html 等）
 ├── backend/                 # Agent API（FastAPI）
 │   ├── app/
 │   │   ├── main.py          # 路由：/api/chat /api/sessions /api/files /api/skills /api/admin
@@ -112,9 +114,17 @@ ChrisAI/
 
 | 变量 | 说明 | 默认 |
 |------|------|------|
-| `DEEPSEEK_API_KEY` | DeepSeek API 密钥（必填） | — |
+| `DEEPSEEK_API_KEY` | DeepSeek 密钥；首次启动时据此创建默认模型，也可被模型的"从 .env 读取"引用。其他模型在「设置」页配置 | — |
 | `DEEPSEEK_BASE_URL` | DeepSeek API 地址 | `https://api.deepseek.com` |
-| `DEEPSEEK_MODEL` | 模型名 | `deepseek-chat` |
+| `DEEPSEEK_MODEL` | 模型名（`deepseek-chat` 已于 2026-07 下线） | `deepseek-flash` |
+| `DEEPSEEK_THINKING` | 思考模式 `enabled` / `disabled` | `disabled` |
+| `DEEPSEEK_REASONING_EFFORT` | 思考强度 `low` / `high` / `max`（仅思考模式） | `high` |
+| `LLM_RETRIES` | 429 / 5xx / 网络错误重试次数 | `2` |
+| `EMBEDDING_API_KEY` | 向量服务密钥；不填则知识库只用关键词检索 | — |
+| `EMBEDDING_BASE_URL` | OpenAI 兼容 `/embeddings` 地址 | `https://api.siliconflow.cn/v1` |
+| `EMBEDDING_MODEL` | 向量模型 | `BAAI/bge-m3` |
+| `RERANK_MODEL` | 重排模型（留空不重排），如 `BAAI/bge-reranker-v2-m3` | — |
+| `EMBEDDING_DAILY_TOKENS` | 全站每日向量 + 重排 token 上限 | `5000000` |
 | `AGENT_SYSTEM_PROMPT` | 自定义系统提示词 | 内置企业 AI 助手人设 |
 | `RUNNER_TOKEN` | Runner 通信令牌（必填） | — |
 | `ADMIN_TOKEN` | 管理员令牌 | — |
@@ -135,7 +145,9 @@ ChrisAI/
 | `/api/sessions` | 会话持久化（按访客 cookie 隔离） |
 | `/api/files` | 会话工作区文件下载 / 上传 |
 | `/api/skills` | 技能列表、查看、创建、编辑、删除、导入导出、复制 |
-| `/api/admin` | 管理员：审核并发布访客技能为公共技能（需 `X-Admin-Token`） |
+| `/api/kb` | 知识库：创建、上传文档、查看片段、检索测试；`PUT /api/sessions/{id}/kbs` 为会话选择知识库 |
+| `/api/models` | 对话框可选的模型列表（不含地址与 Key） |
+| `/api/admin` | 管理员：模型配置、发布访客技能、公开知识库（需 `X-Admin-Token`） |
 
 ## 安全设计
 
@@ -149,8 +161,8 @@ ChrisAI/
 ## 技术栈
 
 - **前端**：原生 HTML / CSS / JS，nginx 提供静态资源
-- **后端**：Python 3 · FastAPI · Uvicorn · httpx · Pydantic · PyYAML
-- **模型**：DeepSeek
+- **后端**：Python 3 · FastAPI · Uvicorn · httpx · Pydantic · PyYAML · NumPy
+- **模型**：DeepSeek（对话）；可选任意 OpenAI 兼容的 embedding / rerank 服务（知识库语义检索）
 - **存储**：SQLite
 - **编排**：Docker Compose
 

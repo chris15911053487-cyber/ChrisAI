@@ -8,130 +8,303 @@
 <meta property="og:title" content="Chris Li｜Enterprise AI">
 <meta property="og:description" content="从交付软件，到交付业务结果。连接企业业务、ERP、数据、知识与 AI。">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#050812">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23050812'/><text x='50%25' y='56%25' font-size='15' font-family='monospace' fill='%2368e7ff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
-
-<link rel="stylesheet" href="styles.css">
+<meta name="theme-color" content="#FAFAF9">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
+<link rel="preload" href="fonts/inter-var-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="tokens.css?v=20260930e">
+<link rel="stylesheet" href="styles.css?v=20260930e">
 </head>
 
 <body>
-<div class="bg-glow" aria-hidden="true"></div>
-<canvas id="net" aria-hidden="true"></canvas>
-<div class="bg-grid" aria-hidden="true"></div>
+<a class="skip" href="#main">跳到正文</a>
 
 <header class="nav" id="nav">
   <div class="container nav-inner">
-    <a class="brand" href="#top" aria-label="回到顶部"><span class="logo">CL</span> CHRIS LI</a>
-    <button class="menu-btn" id="menuBtn" aria-label="打开菜单" aria-expanded="false" aria-controls="navLinks">☰</button>
+    <a class="brand" href="#top" aria-label="Chris Li · 回到顶部"><span class="logo">CL</span><span>Chris Li</span></a>
     <nav class="nav-links" id="navLinks" aria-label="主导航">
-      <a href="#about">简介</a><a href="#capability">能力</a>
-      <a href="ai-agent.html">AI Agent</a><a href="#contact">联系</a>
+      <a href="#about">简介</a>
+      <a href="#capability">能力</a>
+      <a href="#ai">AI Agent</a>
+      <a href="#ai-course">课程</a>
+      <a href="works.html">作品</a>
+      <a href="#contact">联系</a>
     </nav>
-    <a class="nav-cta" href="#contact">合作咨询 →</a>
+    <div class="nav-right">
+      <a class="btn sm ghost hide-sm" href="agent.html">打开 Agent</a>
+      <a class="btn sm dark" href="#contact">合作咨询</a>
+      <button class="menu-btn" id="menuBtn" aria-label="打开菜单" aria-expanded="false" aria-controls="navLinks"><i data-i="menu"></i></button>
+    </div>
   </div>
 </header>
 
-<main id="top">
+<main id="main">
+<span id="top"></span>
 
 <!-- ============ HERO ============ -->
 <section class="hero">
+  <div class="hero-glow" aria-hidden="true"></div>
   <div class="container hero-grid">
-    <div>
-      <div class="status"><i></i> 可接受企业 AI 咨询与项目合作</div>
-      <h1>从<span class="gradient">交付软件</span><br>到<span class="gradient">交付业务结果</span></h1>
-      <div class="role" aria-live="polite"><span id="typed"></span><span class="caret"></span></div>
-      <p class="hero-lead">我是 Chris Li。2010 年起深耕企业数字化与 SAP Business One，覆盖产品、售前、交付、开发与售后。现在，我把企业业务、ERP、数据、知识与 AI 连接起来，构建真正进入业务现场的企业 AI 应用。</p>
-      <div class="hero-actions">
-        <a class="btn primary" href="#contact">合作咨询 →</a>
-        <a class="btn" href="ai-agent.html">体验 AI Agent</a>
+    <div class="hero-copy">
+      <a class="pill reveal" href="#contact"><span class="dot"></span>可接受企业 AI 咨询与项目合作<i data-i="arrow-right"></i></a>
+      <h1 class="reveal"><span class="muted">从交付软件，</span><br>到交付业务结果。</h1>
+      <p class="hero-lead reveal">我是 Chris Li。2010 年起深耕企业数字化与 SAP Business One，覆盖产品、售前、交付、开发与售后。现在，我把业务、ERP、数据、知识与 AI 连接起来，构建真正进入业务现场的企业 AI 应用。</p>
+      <div class="hero-actions reveal">
+        <a class="btn dark" href="#contact">合作咨询<i data-i="arrow-right"></i></a>
+        <a class="btn" href="agent.html">体验 AI Agent</a>
       </div>
-      <div class="tags">
-        <span class="tag">SAP Business One</span><span class="tag">ERP</span><span class="tag">Data</span>
-        <span class="tag">Knowledge / RAG</span><span class="tag">Agent</span><span class="tag">MCP</span>
-      </div>
+      <ul class="hero-meta reveal" aria-label="关键词">
+        <li>SAP Business One</li><li>ERP</li><li>Data</li><li>RAG</li><li>Agent</li><li>MCP</li>
+      </ul>
     </div>
 
-    <div class="panel terminal reveal" role="img" aria-label="演示：用自然语言向 ERP 业务智能体提问">
-      <div class="term-bar"><i></i><i></i><i></i><span>erp-agent — demo</span></div>
-      <div class="term-body" id="term"></div>
+    <!-- Agent 界面演示（与真实 Agent 页同一套视觉） -->
+    <div class="demo reveal" role="img" aria-label="演示：在 Agent 中用自然语言查询 ERP 销售与回款，并生成 Excel 报表">
+      <div class="demo-bar">
+        <span class="demo-dots"><i></i><i></i><i></i></span>
+        <span class="demo-title">Chris AI · Agent</span>
+        <span class="demo-status"><i></i>在线</span>
+      </div>
+      <div class="demo-chat" id="demoChat"></div>
+      <div class="demo-composer">
+        <span class="demo-input" id="demoInput"></span>
+        <span class="demo-send"><i data-i="arrow-up"></i></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 流程动画：业务 → ERP → 数据·知识 → Agent → 行动 -->
+  <div class="container">
+    <div class="pipeline reveal" role="img" aria-label="流程：业务 → ERP → 数据与知识 → AI Agent → 行动">
+      <div class="pl-node" style="--n:0"><span class="pl-ic"><i data-i="briefcase"></i></span><b>业务</b><small>场景 · 流程</small></div>
+      <div class="pl-link" style="--n:0"><i></i></div>
+      <div class="pl-node" style="--n:1"><span class="pl-ic"><i data-i="server"></i></span><b>ERP</b><small>SAP B1</small></div>
+      <div class="pl-link" style="--n:1"><i></i></div>
+      <div class="pl-node" style="--n:2"><span class="pl-ic"><i data-i="database"></i></span><b>数据 · 知识</b><small>SQL · RAG</small></div>
+      <div class="pl-link" style="--n:2"><i></i></div>
+      <div class="pl-node core" style="--n:3"><span class="pl-ic"><i data-i="bot"></i></span><b>AI Agent</b><small>Skill · MCP</small></div>
+      <div class="pl-link" style="--n:3"><i></i></div>
+      <div class="pl-node" style="--n:4"><span class="pl-ic"><i data-i="zap"></i></span><b>行动</b><small>报告 · 审批 · 消息</small></div>
     </div>
   </div>
 </section>
 
 <!-- ============ ABOUT ============ -->
-<section id="about">
+<section id="about" class="sec">
   <div class="container">
-    <div class="section-head reveal">
-      <div><div class="eyebrow">01 · About</div><h2>十六年，站在企业业务一线</h2></div>
-      <div class="section-note">不是单点技术经验，而是从业务、系统、项目、开发到数据的一整条实践链，再进入企业 AI。</div>
-    </div>
-    <div class="metrics">
-      <div class="panel metric hover reveal"><div class="num" data-count="2010" data-plain="1">2010</div><div class="label">开始从事 ERP</div><div class="sub">长期聚焦 SAP Business One</div></div>
-      <div class="panel metric hover reveal"><div class="num" data-count="16" data-suffix="+">16+</div><div class="label">年企业信息化实践</div><div class="sub">持续参与真实企业项目</div></div>
-      <div class="panel metric hover reveal"><div class="num">全链路</div><div class="label">产品 · 售前 · 交付 · 开发</div><div class="sub">覆盖 ERP 全生命周期</div></div>
-      <div class="panel metric hover reveal"><div class="num"><span class="todo">待补充</span></div><div class="label">服务企业 / 项目数</div><div class="sub">如：50+ 家企业、100+ 项目</div></div>
+    <div class="sec-head reveal">
+      <div class="eyebrow">01 · About</div>
+      <h2>十六年，站在企业业务一线</h2>
+      <p class="sec-note">不是单点技术经验，而是从业务、系统、项目、开发到数据的一整条实践链，再进入企业 AI。</p>
     </div>
 
-    <div class="timeline reveal">
-      <div class="tl-item"><div class="year">2010</div><h3>进入 ERP 行业，聚焦 SAP Business One</h3><p>从产品与实施起步，深入理解中小企业的财务、采购、销售、库存与生产业务。</p></div>
-      <div class="tl-item"><div class="year"><span class="todo">年份待补充</span></div><h3>售前 · 交付 · 开发</h3><p>负责方案设计、项目实施、二次开发与报表，积累跨行业交付经验。<span class="todo">可补充：任职公司 / 行业 / 代表客户</span></p></div>
-      <div class="tl-item"><div class="year"><span class="todo">年份待补充</span></div><h3>数据与系统集成</h3><p>围绕 ERP 数据库、报表与外围系统，构建企业数据基础。</p></div>
-      <div class="tl-item"><div class="year">NOW</div><h3>企业 AI</h3><p>把业务、数据、知识与 AI 连接起来，让 AI 从“会回答”走向“能工作”。</p></div>
-    </div>
+    <dl class="stats reveal">
+      <div><dt>开始从事 ERP</dt><dd class="num">2010</dd><dd class="sub">长期聚焦 SAP Business One</dd></div>
+      <div><dt>企业信息化实践</dt><dd class="num">16<span>+ 年</span></dd><dd class="sub">持续参与真实企业项目</dd></div>
+      <div><dt>覆盖 ERP 全生命周期</dt><dd class="num">全链路</dd><dd class="sub">产品 · 售前 · 交付 · 开发 · 售后</dd></div>
+    </dl>
+
+    <ol class="timeline">
+      <li class="reveal"><span class="tl-k">2010</span><div><h3>进入 ERP 行业，聚焦 SAP Business One</h3><p>从产品与实施起步，深入理解中小企业的财务、采购、销售、库存与生产业务。</p></div></li>
+      <li class="reveal"><span class="tl-k">积累</span><div><h3>售前 · 交付 · 开发</h3><p>负责方案设计、项目实施、二次开发与报表，积累跨行业交付经验。</p></div></li>
+      <li class="reveal"><span class="tl-k">延展</span><div><h3>数据与系统集成</h3><p>围绕 ERP 数据库、报表与外围系统，构建企业数据基础。</p></div></li>
+      <li class="reveal now"><span class="tl-k">NOW</span><div><h3>企业 AI</h3><p>把业务、数据、知识与 AI 连接起来，让 AI 从“会回答”走向“能工作”。</p></div></li>
+    </ol>
   </div>
 </section>
 
 <!-- ============ CAPABILITY ============ -->
-<section id="capability">
+<section id="capability" class="sec alt">
   <div class="container">
-    <div class="section-head reveal">
-      <div><div class="eyebrow">02 · Capability</div><h2>我能为企业解决什么</h2></div>
-      <div class="section-note">把“懂什么”翻译成企业可以直接理解的能力与交付物。</div>
-    </div>
-    <div class="grid-3">
-      <div class="panel card hover reveal"><span class="index">01</span><h3>理解企业业务</h3><p>从经营目标、业务流程和实际工作场景出发，把“说不清的问题”变成可分析、可设计的问题。</p></div>
-      <div class="panel card hover reveal"><span class="index">02</span><h3>连接 ERP 与数据</h3><p>围绕 SAP Business One、数据库、报表和外围系统，建立 AI 可以理解和使用的数据基础。</p></div>
-      <div class="panel card hover reveal"><span class="index">03</span><h3>沉淀企业知识</h3><p>把制度、流程、产品资料、项目文档和操作经验组织成可被 AI 使用的企业知识。</p></div>
-      <div class="panel card hover reveal"><span class="index">04</span><h3>构建业务智能体</h3><p>围绕具体任务组合模型、知识、Skill、MCP 与工具，让 AI 从回答走向分析与执行。</p></div>
-      <div class="panel card hover reveal"><span class="index">05</span><h3>重构业务流程</h3><p>寻找重复查询、人工判断、信息搬运和跨系统协同中的 AI 介入点。</p></div>
-      <div class="panel card hover reveal"><span class="index">06</span><h3>真正落地交付</h3><p>不止于 Demo，而是进入企业真实工作流、权限体系和日常使用场景。</p></div>
+    <div class="sec-head reveal">
+      <div class="eyebrow">02 · Capability</div>
+      <h2>我能为企业解决什么</h2>
+      <p class="sec-note">把“懂什么”翻译成企业可以直接理解的能力与交付物。</p>
     </div>
 
-    <div class="section-head reveal" style="margin-top:90px">
-      <div><div class="eyebrow">Entry Points</div><h2>企业 AI 的五个入口</h2></div>
-      <div class="section-note">从数据到执行，逐步让 AI 从“会回答”变成“能工作”。</div>
+    <div class="bento">
+      <article class="card b-2 reveal">
+        <span class="card-ic"><i data-i="target"></i></span>
+        <span class="idx">01</span>
+        <h3>理解企业业务</h3>
+        <p>从经营目标、业务流程和实际工作场景出发，把“说不清的问题”变成可分析、可设计的问题。</p>
+      </article>
+
+      <article class="card b-4 feat reveal">
+        <div class="feat-copy">
+          <span class="card-ic"><i data-i="database"></i></span>
+          <span class="idx">02</span>
+          <h3>连接 ERP 与数据</h3>
+          <p>围绕 SAP Business One、数据库、报表和外围系统，建立 AI 可以理解和使用的数据基础。</p>
+        </div>
+        <div class="schema" aria-hidden="true">
+          <div class="tbl"><b>OCRD</b><span class="k">CardCode</span><span>CardName</span><span>Territory</span></div>
+          <span class="join"><i></i></span>
+          <div class="tbl up"><b>OINV</b><span>DocEntry</span><span class="k">CardCode</span><span>DocTotal</span></div>
+          <span class="join"><i></i></span>
+          <div class="tbl"><b>ORCT</b><span>DocEntry</span><span class="k">CardCode</span><span>SumApplied</span></div>
+        </div>
+      </article>
+
+      <article class="card b-2 reveal">
+        <span class="card-ic"><i data-i="book"></i></span>
+        <span class="idx">03</span>
+        <h3>沉淀企业知识</h3>
+        <p>把制度、流程、产品资料、项目文档和操作经验组织成可被 AI 使用的企业知识。</p>
+      </article>
+
+      <article class="card b-2 reveal">
+        <span class="card-ic"><i data-i="bot"></i></span>
+        <span class="idx">04</span>
+        <h3>构建业务智能体</h3>
+        <p>围绕具体任务组合模型、知识、Skill、MCP 与工具，让 AI 从回答走向分析与执行。</p>
+        <div class="chips" aria-hidden="true"><span>LLM</span><span>RAG</span><span>Skill</span><span>MCP</span><span>Tools</span></div>
+      </article>
+
+      <article class="card b-2 reveal">
+        <span class="card-ic"><i data-i="workflow"></i></span>
+        <span class="idx">05</span>
+        <h3>重构业务流程</h3>
+        <p>寻找重复查询、人工判断、信息搬运和跨系统协同中的 AI 介入点。</p>
+      </article>
+
+      <article class="card b-6 wide reveal">
+        <div>
+          <span class="card-ic"><i data-i="shield"></i></span>
+          <span class="idx">06</span>
+          <h3>真正落地交付</h3>
+          <p>不止于 Demo，而是进入企业真实工作流、权限体系和日常使用场景。</p>
+        </div>
+        <ul class="checks">
+          <li><i data-i="check"></i>对接真实业务数据</li>
+          <li><i data-i="check"></i>遵循企业权限体系</li>
+          <li><i data-i="check"></i>嵌入日常工作流</li>
+          <li><i data-i="check"></i>可持续运维迭代</li>
+        </ul>
+      </article>
     </div>
-    <div class="grid-5">
-      <div class="panel service hover reveal"><div class="n">01 · DATA</div><h3>数据</h3><p>ERP、数据库、报表、Excel → AI 查询与经营分析。</p></div>
-      <div class="panel service hover reveal"><div class="n">02 · KNOWLEDGE</div><h3>知识</h3><p>制度、SOP、产品、项目经验 → 企业知识助手。</p></div>
-      <div class="panel service hover reveal"><div class="n">03 · PROCESS</div><h3>流程</h3><p>ERP、OA、CRM、审批 → AI 进入真实业务流程。</p></div>
-      <div class="panel service hover reveal"><div class="n">04 · DECISION</div><h3>决策</h3><p>异常、风险、经营指标 → AI 分析、预警与辅助判断。</p></div>
-      <div class="panel service hover reveal"><div class="n">05 · ACTION</div><h3>执行</h3><p>订单、审批、报告、消息、系统操作 → AI 参与业务动作。</p></div>
+
+    <div class="sec-head sm reveal" style="margin-top:96px">
+      <div class="eyebrow">Entry Points</div>
+      <h2>企业 AI 的五个入口</h2>
+      <p class="sec-note">从数据到执行，逐步让 AI 从“会回答”变成“能工作”。</p>
+    </div>
+    <ol class="entries reveal" id="entries">
+      <li style="--n:0"><span class="en-n">01 · DATA</span><h3>数据</h3><p>ERP、数据库、报表、Excel → AI 查询与经营分析。</p></li>
+      <li style="--n:1"><span class="en-n">02 · KNOWLEDGE</span><h3>知识</h3><p>制度、SOP、产品、项目经验 → 企业知识助手。</p></li>
+      <li style="--n:2"><span class="en-n">03 · PROCESS</span><h3>流程</h3><p>ERP、OA、CRM、审批 → AI 进入真实业务流程。</p></li>
+      <li style="--n:3"><span class="en-n">04 · DECISION</span><h3>决策</h3><p>异常、风险、经营指标 → AI 分析、预警与辅助判断。</p></li>
+      <li style="--n:4"><span class="en-n">05 · ACTION</span><h3>执行</h3><p>订单、审批、报告、消息、系统操作 → AI 参与业务动作。</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ AI AGENT ============ -->
+<section id="ai" class="sec">
+  <div class="container">
+    <div class="sec-head reveal">
+      <div class="eyebrow">03 · AI Agent</div>
+      <h2>让 AI 从会回答走向能工作</h2>
+      <p class="sec-note">讲清楚原理、教会你落地、拿作品说话。</p>
+    </div>
+
+    <div class="agent-cta reveal">
+      <div class="ac-copy">
+        <h3>直接和 Agent 对话</h3>
+        <p>企业 AI 助手，可切换多种大模型，支持多轮工具调用、技能系统与知识库。脚本在无外网、无密钥的隔离沙箱中运行。</p>
+        <ul class="checks">
+          <li><i data-i="check"></i>生成 Word / Excel 文档</li>
+          <li><i data-i="check"></i>上传文件，交给技能处理</li>
+          <li><i data-i="check"></i>在对话中创建自己的技能</li>
+        </ul>
+        <div class="hero-actions">
+          <a class="btn dark" href="agent.html">开始对话<i data-i="arrow-right"></i></a>
+          <a class="btn" href="skills.html"><i data-i="layers"></i>浏览技能</a>
+        </div>
+      </div>
+      <div class="ac-skills" aria-label="内置技能">
+        <div class="ac-k">BUILT-IN SKILLS</div>
+        <a href="skills.html#skill-creator"><code>skill-creator</code><span>用对话创建新技能</span><i data-i="arrow-up-right"></i></a>
+        <a href="skills.html#xlsx-builder"><code>xlsx-builder</code><span>生成带公式与图表的 Excel</span><i data-i="arrow-up-right"></i></a>
+        <a href="skills.html#docx-report"><code>docx-report</code><span>生成格式规范的 Word 报告</span><i data-i="arrow-up-right"></i></a>
+      </div>
+    </div>
+
+    <!-- 视频 -->
+    <figure class="video reveal">
+      <video src="docs/%E5%BC%80%E5%9C%BA%E8%A7%86%E9%A2%911.mp4" muted playsinline preload="metadata" controls></video>
+      <figcaption>开场视频</figcaption>
+    </figure>
+
+    <!-- 课程 -->
+    <div class="sub-head reveal" id="ai-course">
+      <div><span class="eyebrow">Course</span><h3>AI 课程</h3></div>
+      <p>面向企业与个人的 AI 落地课程。</p>
+    </div>
+    <div class="courses">
+      <a class="card course portal reveal" id="aiPracticePortal" href="#" target="_blank" rel="noopener">
+        <div class="course-top"><span class="badge accent">学堂</span><span class="course-dur">在线平台</span></div>
+        <h3>AI 实践学堂</h3>
+        <p>动手实践为主的 AI 学习平台，边学边练，把课程内容真正跑起来。</p>
+        <ul class="syl"><li>实操驱动的 AI 学习路径</li><li>可动手运行的练习与项目</li><li>持续更新的实践内容</li></ul>
+        <span class="link">进入学堂<i data-i="arrow-up-right"></i></span>
+      </a>
+      <div class="card course reveal">
+        <div class="course-top"><span class="badge">入门</span></div>
+        <h3>企业 AI 认知课</h3>
+        <p>面向管理者与业务骨干，讲清 AI 能做什么、不能做什么，以及如何找到企业的第一个落地场景。</p>
+        <ul class="syl"><li>AI / 大模型 / Agent 基本概念</li><li>企业 AI 的五个入口</li><li>如何评估一个 AI 场景是否值得做</li></ul>
+        <a class="link" href="#contact">咨询报名<i data-i="arrow-right"></i></a>
+      </div>
+      <div class="card course reveal">
+        <div class="course-top"><span class="badge">实战</span></div>
+        <h3>ERP × AI 落地实战课</h3>
+        <p>面向 ERP 顾问与开发者，从数据、知识到 Agent，动手做一个能进入业务流程的 AI 应用。</p>
+        <ul class="syl"><li>连接 SAP Business One 数据</li><li>构建企业知识库（RAG）</li><li>用 Skill / MCP 赋予 Agent 能力</li></ul>
+        <a class="link" href="#contact">咨询报名<i data-i="arrow-right"></i></a>
+      </div>
+      <div class="card course reveal">
+        <div class="course-top"><span class="badge">定制</span><span class="course-dur">按需</span></div>
+        <h3>企业内训 / 定制课</h3>
+        <p>根据企业行业、系统与团队水平定制内容，可结合贵司真实业务场景做工作坊。</p>
+        <ul class="syl"><li>课程内容按企业需求定制</li><li>可结合真实数据与场景</li></ul>
+        <a class="link" href="#contact">咨询定制<i data-i="arrow-right"></i></a>
+      </div>
+    </div>
+
+    <!-- 作品 / 工具入口 -->
+    <div class="more reveal">
+      <a href="works.html"><span><b>AI 作品</b><small>精选 AI 应用与项目展示</small></span><i data-i="arrow-right"></i></a>
+      <a href="tools.html"><span><b>AI 工具</b><small>常用 AI 实用工具集合</small></span><i data-i="arrow-right"></i></a>
     </div>
   </div>
 </section>
 
 <!-- ============ CONTACT ============ -->
-<section id="contact" class="contact">
+<section id="contact" class="sec contact">
   <div class="container">
-    <div class="eyebrow reveal">03 · Contact</div>
-    <h2 class="reveal">成为<span class="gradient">企业问题与 AI 之间的连接者</span></h2>
-    <p class="lead reveal">过去：业务 → ERP → 数据。<br>现在：业务 → 数据 + 知识 → AI → 行动。<br>如果你的企业正在思考 AI 如何真正落地，欢迎聊聊。</p>
+    <div class="eyebrow reveal">04 · Contact</div>
+    <h2 class="reveal">成为企业问题与 AI 之间的连接者</h2>
+    <div class="shift reveal" aria-label="过去与现在">
+      <div><span>过去</span>业务 → ERP → 数据</div>
+      <div class="now"><span>现在</span>业务 → 数据 + 知识 → AI → 行动</div>
+    </div>
+    <p class="lead reveal">如果你的企业正在思考 AI 如何真正落地，欢迎聊聊。</p>
 
     <div class="contact-cards">
-      <div class="panel cc hover reveal">
-        <div class="k">EMAIL</div>
-        <a class="v" href="mailto:363898077@qq.com">363898077@qq.com</a>
-        <div class="row"><a class="mini" href="mailto:363898077@qq.com?subject=%E4%BC%81%E4%B8%9A%20AI%20%E5%90%88%E4%BD%9C%E5%92%A8%E8%AF%A2">发邮件</a><button class="mini" data-copy="363898077@qq.com">复制</button></div>
-      </div>
-      <div class="panel cc wechat hover reveal">
-        <div class="qr">
-          <img src="wechat-qr.png" alt="微信二维码 · 扫码添加 Chris Li" width="150" height="150" loading="lazy">
+      <div class="card cc reveal">
+        <div class="cc-k"><i data-i="mail"></i>Email</div>
+        <a class="cc-v" href="mailto:363898077@qq.com">363898077@qq.com</a>
+        <div class="cc-row">
+          <a class="btn sm dark" href="mailto:363898077@qq.com?subject=%E4%BC%81%E4%B8%9A%20AI%20%E5%90%88%E4%BD%9C%E5%92%A8%E8%AF%A2">发邮件</a>
+          <button class="btn sm" data-copy="363898077@qq.com"><i data-i="copy"></i>复制</button>
         </div>
-        <div class="wechat-info">
-          <div class="k">WECHAT</div>
-          <span class="v">扫码添加微信</span>
-          <p class="wechat-tip">用微信「扫一扫」，或长按 / 保存图片后在微信中识别。</p>
+      </div>
+      <div class="card cc wechat reveal">
+        <img src="wechat-qr.png" alt="微信二维码 · 扫码添加 Chris Li" width="132" height="132" loading="lazy">
+        <div>
+          <div class="cc-k"><i data-i="message"></i>WeChat</div>
+          <span class="cc-v">扫码添加微信</span>
+          <p class="cc-tip">用微信「扫一扫」，或长按 / 保存图片后在微信中识别。</p>
         </div>
       </div>
     </div>
@@ -139,164 +312,135 @@
 </section>
 </main>
 
-<footer>
+<footer class="foot">
   <div class="container">
-    <span>© <span id="year"></span> CHRIS LI · ENTERPRISE AI</span>
-    <span>ERP · DATA · KNOWLEDGE · AI · BUSINESS RESULT</span>
+    <span>© <span id="year"></span> Chris Li · Enterprise AI</span>
+    <span class="mono">ERP · DATA · KNOWLEDGE · AI · BUSINESS RESULT</span>
   </div>
 </footer>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="icons.js?v=20260930e"></script>
 <script>
 (() => {
+  'use strict';
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  document.getElementById('year').textContent = new Date().getFullYear();
-
-  /* ---------- 粒子网络背景 ---------- */
-  const cv = document.getElementById('net'), ctx = cv.getContext('2d');
-  let W, H, pts = [], mouse = {x: -9999, y: -9999};
-  const resize = () => {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    W = innerWidth; H = innerHeight;
-    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const n = Math.min(90, Math.floor(W * H / 16000));
-    pts = Array.from({length: n}, () => ({x: Math.random()*W, y: Math.random()*H, vx: (Math.random()-.5)*.3, vy: (Math.random()-.5)*.3}));
-  };
-  const draw = () => {
-    ctx.clearRect(0, 0, W, H);
-    for (const p of pts) {
-      p.x += p.vx; p.y += p.vy;
-      if (p.x < 0 || p.x > W) p.vx *= -1;
-      if (p.y < 0 || p.y > H) p.vy *= -1;
-    }
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i];
-      for (let j = i + 1; j < pts.length; j++) {
-        const b = pts[j], d = Math.hypot(a.x-b.x, a.y-b.y);
-        if (d < 130) { ctx.strokeStyle = `rgba(104,231,255,${(1-d/130)*.16})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
-      }
-      const md = Math.hypot(a.x-mouse.x, a.y-mouse.y);
-      if (md < 180) { ctx.strokeStyle = `rgba(169,124,255,${(1-md/180)*.35})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(mouse.x,mouse.y); ctx.stroke(); }
-      ctx.fillStyle = 'rgba(150,200,255,.55)'; ctx.beginPath(); ctx.arc(a.x, a.y, 1.4, 0, Math.PI*2); ctx.fill();
-    }
-    if (!reduce) requestAnimationFrame(draw);
-  };
-  resize(); draw();
-  addEventListener('resize', resize);
-  addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  const $ = id => document.getElementById(id);
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  $('year').textContent = new Date().getFullYear();
 
   /* ---------- 导航 ---------- */
-  const nav = document.getElementById('nav'), menuBtn = document.getElementById('menuBtn'), links = document.getElementById('navLinks');
-  const onScroll = () => nav.classList.toggle('scrolled', scrollY > 20);
+  const nav = $('nav'), menuBtn = $('menuBtn'), links = $('navLinks');
+  const onScroll = () => nav.classList.toggle('scrolled', scrollY > 8);
   addEventListener('scroll', onScroll, {passive: true}); onScroll();
-  menuBtn.addEventListener('click', () => {
-    const open = links.classList.toggle('open');
-    menuBtn.setAttribute('aria-expanded', open); menuBtn.textContent = open ? '✕' : '☰';
-  });
-  links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
-    links.classList.remove('open'); menuBtn.setAttribute('aria-expanded', false); menuBtn.textContent = '☰';
-  }));
-  // 当前区块高亮
-  const navAs = [...links.querySelectorAll('a')];
+  const setMenu = open => {
+    links.classList.toggle('open', open);
+    menuBtn.setAttribute('aria-expanded', open);
+    menuBtn.innerHTML = icon(open ? 'x' : 'menu');
+  };
+  menuBtn.addEventListener('click', () => setMenu(!links.classList.contains('open')));
+  links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => setMenu(false)));
+
+  const navAs = [...links.querySelectorAll('a[href^="#"]')];
   const secObs = new IntersectionObserver(es => es.forEach(e => {
     if (e.isIntersecting) navAs.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
   }), {rootMargin: '-45% 0px -50% 0px'});
   navAs.forEach(a => { const s = document.querySelector(a.getAttribute('href')); if (s) secObs.observe(s); });
 
-  /* ---------- 角色打字效果 ---------- */
-  const roles = ['> 企业 AI 解决方案顾问', '> SAP Business One 专家', '> ERP × Data × Agent 构建者', '> 企业问题与 AI 的连接者'];
-  const typed = document.getElementById('typed');
-  if (reduce) typed.textContent = roles[0];
-  else {
-    let r = 0, c = 0, del = false;
-    const tick = () => {
-      const s = roles[r];
-      typed.textContent = s.slice(0, c);
-      if (!del && c === s.length) { del = true; return setTimeout(tick, 1800); }
-      if (del && c === 0) { del = false; r = (r + 1) % roles.length; }
-      c += del ? -1 : 1;
-      setTimeout(tick, del ? 35 : 85);
-    };
-    tick();
-  }
-
-  /* ---------- 终端演示 ---------- */
-  const term = document.getElementById('term');
-  const script = [
-    ['c', '# 用自然语言向 ERP 提问\n'],
-    ['p', '❯ '], ['t', '上个月华东区销售额前 5 的客户是谁？回款情况怎样？\n\n'],
-    ['c', '⠿ 解析意图: 销售分析 · 区域=华东 · 期间=上月\n'],
-    ['c', '⠿ 调用工具: sap_b1.query(OINV, ORCT)\n'],
-    ['c', '⠿ 关联知识: 《应收账款管理制度》\n\n'],
-    ['k', '结果 '], ['n', '(示例数据)\n'],
-    ['n', '  1. 客户 A   '], ['v', '¥1,286,400'], ['n', '  回款 92%\n'],
-    ['n', '  2. 客户 B   '], ['v', '¥  964,200'], ['n', '  回款 71%  ⚠\n'],
-    ['n', '  3. 客户 C   '], ['v', '¥  812,900'], ['n', '  回款 100%\n\n'],
-    ['k', '建议 '], ['n', '客户 B 逾期 45 天，已超出制度规定账期，\n     建议今日发起催收提醒。\n\n'],
-    ['p', '❯ '], ['t', '好的，帮我生成催收邮件草稿']
-  ];
-  const cls = {c:'c', p:'p', k:'k', v:'v', t:'', n:''};
-  const runTerm = async () => {
-    term.innerHTML = '';
-    for (const [type, text] of script) {
-      const span = document.createElement('span');
-      if (cls[type]) span.className = cls[type];
-      term.appendChild(span);
-      if (reduce) { span.textContent = text; continue; }
-      const speed = type === 't' ? 45 : type === 'c' ? 8 : 4;
-      for (const ch of text) { span.textContent += ch; await new Promise(r => setTimeout(r, speed)); }
-      if (type === 'c') await new Promise(r => setTimeout(r, 280));
-    }
-    if (!reduce) setTimeout(runTerm, 5000);
-  };
-  runTerm();
-
-  /* ---------- 滚动出现 + 数字滚动 ---------- */
-  const countUp = el => {
-    const end = +el.dataset.count, suffix = el.dataset.suffix || '', start = el.dataset.plain ? end - 16 : 0, t0 = performance.now();
-    const step = t => {
-      const k = Math.min((t - t0) / 1200, 1), e = 1 - Math.pow(1 - k, 3);
-      el.textContent = Math.round(start + (end - start) * e) + suffix;
-      if (k < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  };
+  /* ---------- 滚动出现 ---------- */
   const revObs = new IntersectionObserver(es => es.forEach(e => {
     if (!e.isIntersecting) return;
-    e.target.classList.add('in');
-    e.target.querySelectorAll('[data-count]').forEach(el => !reduce && countUp(el));
-    revObs.unobserve(e.target);
-  }), {threshold: .12});
-  document.querySelectorAll('.reveal').forEach(el => revObs.observe(el));
-
-  /* ---------- 卡片光斑跟随 ---------- */
-  document.querySelectorAll('.panel.hover').forEach(el => el.addEventListener('pointermove', e => {
-    const r = el.getBoundingClientRect();
-    el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-    el.style.setProperty('--my', (e.clientY - r.top) + 'px');
-  }));
-
-  /* ---------- 作品 Tab（支持键盘左右切换） ---------- */
-  const tabs = [...document.querySelectorAll('.case-tab')];
-  const select = tab => {
-    tabs.forEach(t => {
-      const on = t === tab;
-      t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1;
-      const p = document.getElementById(t.getAttribute('aria-controls'));
-      p.classList.toggle('active', on); if (on) p.classList.add('in');
-    });
-  };
-  tabs.forEach((t, i) => {
-    t.addEventListener('click', () => select(t));
-    t.addEventListener('keydown', e => {
-      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
-      if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; select(n); n.focus(); }
-    });
+    e.target.classList.add('in'); revObs.unobserve(e.target);
+  }), {threshold: .12, rootMargin: '0px 0px -40px 0px'});
+  document.querySelectorAll('.reveal').forEach((el, i) => {
+    // 同一父级内的兄弟元素依次错开出现
+    const sib = [...el.parentElement.children].filter(c => c.classList.contains('reveal')).indexOf(el);
+    el.style.setProperty('--d', Math.min(sib, 6) * 60 + 'ms');
+    revObs.observe(el);
   });
 
+  /* ---------- Agent 界面演示 ---------- */
+  const chat = $('demoChat'), inputEl = $('demoInput');
+  const Q = '上个月华东区销售额前 3 的客户是谁？回款情况怎样？';
+  const STEPS = [
+    ['解析意图', '销售分析 · 区域=华东 · 期间=上月'],
+    ['sap_b1.query', 'OINV · ORCT → 返回 3 行'],
+    ['检索知识', '《应收账款管理制度》'],
+    ['xlsx-builder', '生成 华东区应收分析.xlsx'],
+  ];
+  const ROWS = [['客户 A', '¥1,286,400', '92%', ''], ['客户 B', '¥964,200', '71%', 'warn'], ['客户 C', '¥812,900', '100%', '']];
+  const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+  const scroll = () => { chat.scrollTop = chat.scrollHeight; };
+  const placeholder = () => { inputEl.innerHTML = '<span class="ph">输入你的问题…</span>'; };
+
+  const userMsg = () => { const m = h('div', 'd-msg user'); m.append(h('div', 'd-bubble', Q)); chat.append(m); };
+  const botBody = () => {
+    const m = h('div', 'd-msg bot'); m.append(h('div', 'd-av', 'AI'));
+    const b = h('div', 'd-body'); m.append(b); chat.append(m); return b;
+  };
+  const step = (body, [t, s], done) => {
+    const d = h('div', 'd-step' + (done ? ' ok' : ' run'),
+      `<span class="d-ico">${done ? icon('check') : ''}</span><span class="d-t">${t}</span><span class="d-s">${done ? s : '执行中…'}</span>`);
+    body.append(d); return d;
+  };
+  const finish = d => { d.classList.replace('run', 'ok'); d.querySelector('.d-ico').innerHTML = icon('check'); };
+  const answer = (body, rowsNow) => {
+    const a = h('div', 'd-bubble',
+      '<p>上月华东区销售额 Top 3 <span class="d-muted">（示例数据）</span></p>' +
+      '<table><thead><tr><th>客户</th><th>销售额</th><th>回款</th></tr></thead><tbody></tbody></table>');
+    body.append(a);
+    const tb = a.querySelector('tbody');
+    const addRow = ([c, v, p, w]) => tb.append(h('tr', w, `<td>${c}</td><td class="n">${v}</td><td class="n">${p}${w ? ' <em>逾期</em>' : ''}</td>`));
+    if (rowsNow) ROWS.forEach(addRow);
+    return {a, addRow};
+  };
+  const tip = (a) => a.append(h('p', 'd-tip', '客户 B 已逾期 45 天，超出制度账期，建议今日发起催收提醒。'));
+  const file = body => body.append(h('div', 'd-file',
+    `<span class="d-fi">X</span><span><b>华东区应收分析.xlsx</b><small>14.2 KB</small></span>${icon('download')}`));
+
+  const renderStatic = () => {
+    userMsg(); const b = botBody();
+    STEPS.forEach(s => step(b, s, true));
+    const {a} = answer(b, true); tip(a); file(b); placeholder();
+  };
+
+  let visible = true;
+  new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(chat);
+  const until = async () => { while (!visible || document.hidden) await wait(400); };
+
+  const run = async () => {
+    for (;;) {
+      await until();
+      chat.classList.remove('fade'); chat.replaceChildren(); placeholder();
+      await wait(700);
+      inputEl.textContent = '';
+      const caret = h('span', 'caret');
+      for (const ch of Q) { inputEl.textContent += ch; inputEl.append(caret); await wait(55); }
+      await wait(450); placeholder(); userMsg(); scroll();
+      await wait(500);
+      const b = botBody();
+      const dots = h('div', 'd-dots', '<i></i><i></i><i></i>'); b.append(dots); scroll();
+      await wait(700); dots.remove();
+      for (const s of STEPS.slice(0, 3)) { const d = step(b, s); scroll(); await wait(750); finish(d); d.querySelector('.d-s').textContent = s[1]; await wait(200); }
+      const {a, addRow} = answer(b); scroll();
+      for (const r of ROWS) { await wait(260); addRow(r); scroll(); }
+      await wait(400); tip(a); scroll();
+      await wait(600);
+      const d = step(b, STEPS[3]); scroll(); await wait(900); finish(d); d.querySelector('.d-s').textContent = STEPS[3][1];
+      await wait(250); file(b); scroll();
+      await wait(5200);
+      chat.classList.add('fade'); await wait(450);
+    }
+  };
+  if (reduce) renderStatic(); else run();
+
+  /* ---------- AI 实践学堂：同域名 8060 端口 ---------- */
+  const portal = $('aiPracticePortal');
+  if (portal) portal.href = location.protocol + '//' + location.hostname + ':8060/';
+
   /* ---------- 复制联系方式 ---------- */
-  const toast = document.getElementById('toast');
+  const toast = $('toast');
   const show = msg => { toast.textContent = msg; toast.classList.add('show'); clearTimeout(show.t); show.t = setTimeout(() => toast.classList.remove('show'), 1800); };
   document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(b.dataset.copy); show('已复制：' + b.dataset.copy); }

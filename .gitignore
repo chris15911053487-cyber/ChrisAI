@@ -9,3 +9,6 @@ __pycache__/
 
 # os
 **/.DS_Store
+
+# 大文件 / 视频（不入库，站点视频请用外部存储或 Git LFS）
+*.mp4

@@ -10,11 +10,19 @@ def _int(name: str, default: int) -> int:
         return default
 
 
-# ---- 模型 ----
+# ---- 对话模型 ----
+# 对话模型在「设置」页管理（models 表，支持任意 OpenAI 兼容接口）。
+# 以下 DEEPSEEK_* 仅用于：首次启动时自动创建默认模型；DEEPSEEK_API_KEY 可被模型的"环境变量 Key"引用。
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
-DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-flash")
+# 思考模式：disabled（默认，更快更省，适合工具调用为主的场景）| enabled
+DEEPSEEK_THINKING = os.getenv("DEEPSEEK_THINKING", "disabled").strip().lower()
+if DEEPSEEK_THINKING not in ("enabled", "disabled"):
+    DEEPSEEK_THINKING = "disabled"
+DEEPSEEK_REASONING_EFFORT = os.getenv("DEEPSEEK_REASONING_EFFORT", "high")  # low | high | max（仅思考模式）
 LLM_TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "120"))
+LLM_RETRIES = _int("LLM_RETRIES", 2)  # 429 / 5xx / 网络错误时的重试次数（仅在尚未输出任何内容时）
 PERSONA_PROMPT = os.getenv(
     "AGENT_SYSTEM_PROMPT",
     "你是 Chris Li 的企业 AI 助手，擅长 SAP Business One、企业数据、知识库与 AI Agent 落地。"
@@ -59,5 +67,28 @@ SKILL_MAX_FILES = _int("SKILL_MAX_FILES", 50)
 SKILL_MAX_FILE_KB = _int("SKILL_MAX_FILE_KB", 1024)
 SKILL_MAX_TOTAL_KB = _int("SKILL_MAX_TOTAL_KB", 4096)
 MAX_USER_SKILLS = _int("MAX_USER_SKILLS", 20)
+
+# ---- 知识库 ----
+KB_DIR = DATA_DIR / "kb"                                   # 原始文件：KB_DIR/<kb_id>/<doc_id><ext>
+KB_MAX_PER_VISITOR = _int("KB_MAX_PER_VISITOR", 5)         # 每访客知识库数
+KB_MAX_DOCS = _int("KB_MAX_DOCS", 100)                     # 每知识库文档数
+KB_VISITOR_QUOTA_MB = _int("KB_VISITOR_QUOTA_MB", 50)      # 每访客原始文件总大小
+KB_DOC_MAX_CHARS = _int("KB_DOC_MAX_CHARS", 500_000)       # 单文档解析后字符上限
+KB_CHUNK_CHARS = _int("KB_CHUNK_CHARS", 600)               # 切片长度
+KB_CHUNK_OVERLAP = _int("KB_CHUNK_OVERLAP", 80)            # 长段落切分重叠
+KB_MAX_PER_SESSION = _int("KB_MAX_PER_SESSION", 5)         # 单会话可同时选择的知识库数
+
+# ---- 向量检索 / 重排（OpenAI 兼容接口，如硅基流动、阿里云百炼、自托管 TEI；不配置则只用关键词检索） ----
+EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "https://api.siliconflow.cn/v1").rstrip("/")
+EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "")
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+# 查询前缀：Qwen3-Embedding 需要给查询加指令，文档不加；留空则按模型名自动判断
+EMBEDDING_QUERY_INSTRUCT = os.getenv("EMBEDDING_QUERY_INSTRUCT", "")
+EMBEDDING_BATCH = _int("EMBEDDING_BATCH", 32)
+EMBEDDING_DAILY_TOKENS = _int("EMBEDDING_DAILY_TOKENS", 5_000_000)  # 全站每日 embedding + rerank token 上限
+RERANK_BASE_URL = os.getenv("RERANK_BASE_URL", "").rstrip("/")   # 留空复用 EMBEDDING_BASE_URL
+RERANK_API_KEY = os.getenv("RERANK_API_KEY", "")                  # 留空复用 EMBEDDING_API_KEY
+RERANK_MODEL = os.getenv("RERANK_MODEL", "")               # 例如 BAAI/bge-reranker-v2-m3；留空不重排
+KB_RECALL = _int("KB_RECALL", 30)                          # 每路召回数（关键词 / 向量），融合后再重排
 
 COOKIE_NAME = "cl_vid"

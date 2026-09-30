@@ -5,82 +5,144 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>技能管理｜Chris Li · AI Agent</title>
 <meta name="description" content="查看、创建、编辑、导入导出 AI Agent 技能（Skills）。">
-<meta name="theme-color" content="#050812">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23050812'/><text x='50%25' y='56%25' font-size='15' font-family='monospace' fill='%2368e7ff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
-<link rel="stylesheet" href="agent.css">
+<meta name="theme-color" content="#FAFAF9">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
+<link rel="stylesheet" href="tokens.css?v=20260930e">
+<link rel="stylesheet" href="agent.css?v=20260930e">
+<link rel="stylesheet" href="sidebar.css?v=20260930e">
 <style>
-body{overflow:auto}
-.wrap{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:26px 0 60px;display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
-.card{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:16px}
-.list-head{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.group{font:11px/1 var(--mono);color:#5f7290;letter-spacing:.08em;margin:14px 4px 6px}
-.sk{display:block;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:12px;padding:10px 12px;cursor:pointer;transition:background .15s,border-color .15s}
-.sk:hover{background:rgba(126,170,255,.07)}
-.sk.active{border-color:rgba(104,231,255,.4);background:rgba(104,231,255,.08)}
-.sk .n{font:600 14px/1.3 var(--mono);display:flex;align-items:center;gap:8px}
-.sk .ds{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.badge{font:10px/1 var(--mono);padding:3px 6px;border-radius:6px;border:1px solid var(--line);color:var(--muted);font-weight:400}
-.badge.builtin{color:var(--cyan);border-color:rgba(104,231,255,.35)}
-.badge.public{color:var(--violet);border-color:rgba(169,124,255,.4)}
-.badge.user{color:var(--green);border-color:rgba(85,230,177,.4)}
-.empty{color:#5f7290;font-size:13px;padding:6px 12px}
-.detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.detail-head h2{margin:0;font:600 20px/1.3 var(--mono);display:flex;align-items:center;gap:10px}
-.detail-head p{margin:6px 0 0;color:var(--muted);font-size:14px;line-height:1.6;max-width:640px}
-.btns{display:flex;gap:8px;flex-wrap:wrap}
-.ed{display:grid;grid-template-columns:220px 1fr;gap:14px;min-height:420px}
+body{overflow:auto;display:block}
+.bar{position:sticky;top:0}
+.wrap{width:min(1240px,calc(100% - 40px));margin:0 auto;padding:28px 0 64px;display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-lg);padding:16px}
+aside.card{position:sticky;top:84px;max-height:calc(100vh - 108px);overflow-y:auto;background:var(--bg-2)}
+main.card{padding:24px;min-width:0}
+.list-head{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.group{font:500 11px/1 var(--mono);color:var(--text-3);letter-spacing:.06em;text-transform:uppercase;margin:18px 6px 8px}
+.sk{display:block;width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:10px;padding:10px 12px;cursor:pointer;transition:background .15s,border-color .15s,box-shadow .15s}
+.sk:hover{background:rgba(10,10,10,.04)}
+.sk.active{background:var(--surface);border-color:var(--line);box-shadow:var(--sh-1)}
+.sk .n{font:500 13px/1.3 var(--mono);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sk .ds{font-size:12.5px;color:var(--text-2);margin-top:5px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.empty{color:var(--text-3);font-size:12.5px;padding:4px 12px;line-height:1.6}
+.search{display:flex;align-items:center;gap:8px;height:36px;margin-top:12px;padding:0 10px;border:1px solid var(--line-2);border-radius:9px;background:var(--surface);color:var(--text-3);transition:border-color var(--dur),box-shadow var(--dur)}
+.search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.search input{flex:1;min-width:0;border:none;background:none;outline:none;font:13.5px/1 var(--sans);color:var(--text)}
+.search input::placeholder{color:var(--text-3)}
+.search kbd{font:11px/1 var(--mono);color:var(--text-3);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:2px 5px;background:var(--bg)}
+.search:focus-within kbd{display:none}
+.scope{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;margin-top:8px;padding:3px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
+.scope button{height:28px;border:none;border-radius:6px;background:none;font-size:12px;color:var(--text-2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:background var(--dur),color var(--dur)}
+.scope button:hover{color:var(--text)}
+.scope button small{font:10.5px/1 var(--mono);color:var(--text-3)}
+.scope button.on{background:var(--surface);color:var(--text);font-weight:500;box-shadow:var(--sh-1)}
+.sk mark{background:rgba(250,204,21,.35);color:inherit;border-radius:3px;padding:0 1px}
+.sk-none{padding:18px 12px;text-align:center;color:var(--text-3);font-size:12.5px}
+.sk-none button{margin-top:8px;border:none;background:none;color:var(--accent);font-size:12.5px;cursor:pointer}
+.detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;padding-bottom:18px;margin-bottom:18px;border-bottom:1px solid var(--line)}
+.detail-head h2{margin:0;font:600 20px/1.3 var(--mono);letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.detail-head p{margin:8px 0 0;color:var(--text-2);font-size:14px;line-height:1.65;max-width:620px}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.ed{display:grid;grid-template-columns:210px 1fr;gap:16px;min-height:420px}
 .files-nav{border-right:1px solid var(--line);padding-right:12px;display:flex;flex-direction:column;gap:2px}
-.fbtn{display:flex;justify-content:space-between;gap:8px;text-align:left;background:none;border:none;border-radius:8px;padding:7px 9px;cursor:pointer;font:12px/1.4 var(--mono);color:#c6d4ea;word-break:break-all}
-.fbtn:hover{background:rgba(126,170,255,.07)}
-.fbtn.active{background:rgba(104,231,255,.1);color:var(--text)}
-.fbtn small{color:#5f7290;flex:none}
-.fbtn.dirty::after{content:"●";color:var(--amber);margin-left:4px}
+.files-title{font:500 11px/1 var(--mono);color:var(--text-3);letter-spacing:.06em;text-transform:uppercase;padding:2px 4px 8px}
+.files-dir{font:11px/1 var(--mono);color:var(--text-3);padding:10px 4px 4px;word-break:break-all}
+.fitem{display:flex;align-items:center;gap:10px;text-align:left;background:none;border:1px solid transparent;border-radius:9px;padding:8px 9px;cursor:pointer;transition:background .15s,border-color .15s}
+.fitem.nested{margin-left:8px}
+.fitem:hover{background:rgba(10,10,10,.04)}
+.fitem.active{background:var(--surface);border-color:var(--line);box-shadow:var(--sh-1)}
+.fkind{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font:700 9.5px/1 var(--mono);letter-spacing:.02em;border:1px solid var(--line)}
+.k-skill{background:var(--text);color:#fff;border-color:var(--text)}
+.k-py{background:#EFF6FF;color:#1D4ED8;border-color:#DBEAFE}
+.k-md{background:#F5F3FF;color:#6D28D9;border-color:#EDE9FE}
+.k-json{background:#FEFCE8;color:#A16207;border-color:#FEF08A}
+.k-yaml{background:#ECFEFF;color:#0E7490;border-color:#CFF9FE}
+.k-data{background:#ECFDF5;color:#047857;border-color:#D1FAE5}
+.k-web{background:#FFF7ED;color:#C2410C;border-color:#FFEDD5}
+.k-img{background:#FDF2F8;color:#BE185D;border-color:#FCE7F3}
+.k-txt,.k-bin{background:var(--bg-2);color:var(--text-2)}
+.fmeta{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.fname{font:500 13px/1.3 var(--sans);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fitem.active .fname{color:var(--text)}
+.fsub{font:10.5px/1 var(--mono);color:var(--text-3)}
+.fdot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.editor .path{align-items:center}
+.path-name{font:12px/1 var(--mono);color:var(--text-2)}
+.path-right{display:flex;align-items:center;gap:8px}
+.vseg{display:flex;padding:3px;gap:2px;border:1px solid var(--line-2);border-radius:9px;background:var(--bg-2)}
+.vseg button{height:26px;padding:0 12px;border:none;border-radius:6px;background:none;font-size:12.5px;color:var(--text-2);cursor:pointer;transition:background var(--dur),color var(--dur)}
+.vseg button:hover{color:var(--text)}
+.vseg button.on{background:var(--surface);color:var(--text);font-weight:500;box-shadow:var(--sh-1)}
+/* 预览面板 */
+.preview-pane{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.frontmatter{display:flex;flex-direction:column;gap:0;background:var(--bg-2);border-bottom:1px solid var(--line);padding:6px 4px}
+.fm-row{display:grid;grid-template-columns:120px 1fr;gap:12px;padding:8px 16px}
+.fm-row+.fm-row{border-top:1px solid var(--line)}
+.fm-k{font:500 12px/1.5 var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.04em}
+.fm-v{font-size:13.5px;line-height:1.6;color:var(--text);word-break:break-word}
+.preview-pane .md{padding:20px 22px;font-size:14.5px}
+.preview-pane .md>:first-child{margin-top:0}
+/* 只读代码视图 */
+.codeview{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.code-bar{display:flex;align-items:center;justify-content:space-between;height:38px;padding:0 10px 0 14px;border-bottom:1px solid var(--line);background:var(--bg-2)}
+.code-lang{font:500 11px/1 var(--mono);color:var(--text-3);letter-spacing:.06em}
+.code-copy{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border:1px solid var(--line-2);border-radius:7px;background:var(--surface);font-size:12px;color:var(--text-2);cursor:pointer}
+.code-copy:hover{border-color:var(--text-3);color:var(--text)}
+.code-copy .i{width:13px;height:13px}
+.code-scroll{display:flex;max-height:560px;overflow:auto;background:var(--bg)}
+.code-gutter{flex:none;padding:14px 12px;text-align:right;font:12.5px/1.7 var(--mono);color:var(--text-3);background:var(--bg-2);border-right:1px solid var(--line);white-space:pre;user-select:none}
+.code-body{margin:0;padding:14px 16px;overflow:visible;background:none;border:none;border-radius:0}
+.code-body code{font:12.5px/1.7 var(--mono);color:var(--text);white-space:pre}
+@media(max-width:900px){.fm-row{grid-template-columns:88px 1fr}}
 .editor{display:flex;flex-direction:column;gap:8px;min-width:0}
-.editor .path{font:12px/1 var(--mono);color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
-.editor textarea{width:100%;min-height:460px;flex:1;resize:vertical;background:#060b16;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font:13px/1.6 var(--mono);color:#dbe6f7;tab-size:4;white-space:pre;overflow:auto}
-.editor textarea:focus{outline:none;border-color:rgba(104,231,255,.45)}
-.editor textarea[readonly]{color:#aebbd0}
-.bin{color:var(--muted);font-size:13px;padding:20px;border:1px dashed var(--line);border-radius:10px}
-.welcome-card h2{margin:0 0 10px;font-size:22px}
-.welcome-card p,.welcome-card li{color:#b9c7dd;font-size:14px;line-height:1.8}
-.welcome-card code{font-family:var(--mono);background:rgba(126,170,255,.12);padding:.1em .35em;border-radius:5px;font-size:.9em}
-dialog{background:#0a1222;color:var(--text);border:1px solid rgba(104,231,255,.35);border-radius:16px;padding:20px;width:min(460px,92vw)}
-dialog::backdrop{background:rgba(0,0,0,.6)}
-dialog h3{margin:0 0 12px}
-dialog label{display:block;font-size:13px;color:var(--muted);margin:10px 0 6px}
-dialog input,dialog textarea{width:100%;background:#060b16;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text);font:14px/1.5 inherit;font-family:inherit}
-dialog input:focus,dialog textarea:focus{outline:none;border-color:rgba(104,231,255,.45)}
-dialog .row{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
-dialog .err{color:#ffb3b3;font-size:13px;margin-top:8px;min-height:1em}
-@media(max-width:900px){.wrap{grid-template-columns:1fr}.ed{grid-template-columns:1fr}.files-nav{border-right:none;border-bottom:1px solid var(--line);padding:0 0 10px}}
+.editor .path{font:12px/1 var(--mono);color:var(--text-3);display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:28px}
+.editor textarea{width:100%;min-height:480px;flex:1;resize:vertical;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px 16px;font:13px/1.65 var(--mono);color:var(--text);tab-size:4;white-space:pre;overflow:auto;max-height:none}
+.editor textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.editor textarea[readonly]{color:var(--text-2)}
+.bin{color:var(--text-2);font-size:13px;padding:20px;border:1px dashed var(--line-2);border-radius:10px}
+.bin a{color:var(--accent)!important}
+.welcome-card{max-width:680px;padding:12px 8px}
+.welcome-card .eyebrow{display:block;font:500 11.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:12px}
+.welcome-card h2{margin:0 0 12px;font-size:28px;font-weight:600;letter-spacing:-.03em}
+.welcome-card p,.welcome-card li{color:var(--text-2);font-size:14.5px;line-height:1.8}
+.welcome-card ul{padding-left:1.2em}
+.welcome-card li::marker{color:var(--text-3)}
+.welcome-card b{color:var(--text);font-weight:600}
+.welcome-card code{font-family:var(--mono);background:var(--bg-2);border:1px solid var(--line);padding:.1em .35em;border-radius:5px;font-size:.88em}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}aside.card{position:static;max-height:none}.ed{grid-template-columns:1fr}.files-nav{border-right:none;border-bottom:1px solid var(--line);padding:0 0 10px}}
 </style>
 </head>
-<body>
-<div class="bg-glow"></div>
-<div class="bg-grid"></div>
+<body data-nav="skills">
 
 <header class="bar">
   <div class="left">
-    <span class="logo">CL</span>
-    <h1>技能管理 · Skills</h1>
+    <a class="logo" href="index.html" aria-label="返回首页">CL</a>
+    <h1>技能<small>Skills</small></h1>
   </div>
   <div class="actions">
-    <a class="iconbtn" href="agent.html">💬 返回对话</a>
+    <a class="iconbtn" href="agent.html"><i data-i="message"></i>返回对话</a>
   </div>
 </header>
 
 <div class="wrap">
   <aside class="card">
     <div class="list-head">
-      <button class="iconbtn primary" id="newSkillBtn">＋ 新建技能</button>
-      <button class="iconbtn" id="importBtn">⤒ 导入 zip</button>
+      <button class="iconbtn primary" id="newSkillBtn"><i data-i="plus"></i>新建技能</button>
+      <button class="iconbtn" id="importBtn"><i data-i="upload"></i>导入 zip</button>
       <input type="file" id="importInput" accept=".zip,application/zip" hidden>
     </div>
-    <div id="skillList"></div>
+    <label class="search">
+      <i data-i="search"></i>
+      <input type="search" id="skillSearch" placeholder="搜索技能" aria-label="搜索技能">
+      <kbd>/</kbd>
+    </label>
+    <div class="scope" id="scopeSeg" role="group" aria-label="技能范围"></div>
+    <div id="skillList" aria-live="polite"></div>
   </aside>
 
   <main class="card" id="detail">
     <div class="welcome-card">
+      <span class="eyebrow">Skills</span>
       <h2>什么是技能？</h2>
       <p>技能（Skill）是一个包含 <code>SKILL.md</code> 说明和可选 Python 脚本的文件夹。对话时，AI 会根据技能的描述自动判断何时使用它，按说明调用脚本，在隔离沙箱中生成文档、表格等结果。</p>
       <ul>
@@ -107,6 +169,10 @@ dialog .err{color:#ffb3b3;font-size:13px;margin-top:8px;min-height:1em}
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="vendor/marked-14.1.4.umd.js"></script>
+<script src="vendor/purify-3.2.3.min.js"></script>
+<script src="icons.js?v=20260930e"></script>
+<script src="sidebar.js?v=20260930e"></script>
 <script>
 (() => {
   'use strict';
@@ -116,7 +182,12 @@ dialog .err{color:#ffb3b3;font-size:13px;margin-top:8px;min-height:1em}
   const SCOPE = {builtin: '内置', public: '公共', user: '我的'};
   const TEXT_EXT = /\.(md|txt|py|json|ya?ml|csv|html|css|js|xml|sql|toml|ini|cfg)$/i;
 
-  let skills = [], current = null; // current: {meta, files:{path:{content,orig,text,size}}, active, added:Set, deleted:Set}
+  let skills = [], current = null, fq = '', fscope = '';
+  let viewMode = 'preview'; // preview | source
+
+  marked.setOptions({gfm: true, breaks: true});
+  DOMPurify.addHook('afterSanitizeAttributes', node => { if (node.tagName === 'A') { node.setAttribute('target', '_blank'); node.setAttribute('rel', 'noopener noreferrer'); } });
+  const renderMd = t => DOMPurify.sanitize(marked.parse(t || ''), {FORBID_TAGS: ['style','form','input','img'], FORBID_ATTR: ['style','onerror','onload']}); // current: {meta, files:{path:{content,orig,text,size}}, active, added:Set, deleted:Set}
 
   let tt;
   function toast(msg, err) {
@@ -163,23 +234,69 @@ dialog .err{color:#ffb3b3;font-size:13px;margin-top:8px;min-height:1em}
   /* ---------- 列表 ---------- */
   async function loadList(select) {
     try { skills = (await api('/api/skills')).skills; } catch (e) { toast(e.message, true); return; }
+    renderList();
+    if (select) openSkill(select);
+  }
+
+  // 高亮匹配词（纯 DOM）
+  function hl(text, q) {
+    const f = document.createDocumentFragment();
+    if (!q) { f.append(text); return f; }
+    const low = text.toLowerCase(); let i = 0, j;
+    while ((j = low.indexOf(q, i)) >= 0) { if (j > i) f.append(text.slice(i, j)); f.append(el('mark', '', text.slice(j, j + q.length))); i = j + q.length; }
+    f.append(text.slice(i)); return f;
+  }
+
+  function renderScope() {
+    const seg = $('scopeSeg'); seg.replaceChildren();
+    const n = k => skills.filter(s => !k || s.scope === k).length;
+    for (const [k, label] of [['', '全部'], ['user', '我的'], ['builtin', '内置'], ['public', '公共']]) {
+      const b = el('button', fscope === k ? 'on' : '', label); b.type = 'button';
+      b.setAttribute('aria-pressed', fscope === k); b.append(el('small', '', String(n(k))));
+      b.addEventListener('click', () => { fscope = k; renderList(); });
+      seg.append(b);
+    }
+  }
+
+  function renderList() {
+    renderScope();
+    const q = fq.toLowerCase();
+    const match = s => (!fscope || s.scope === fscope) && (!q || s.name.toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q));
     const box = $('skillList'); box.replaceChildren();
     const groups = [['我的技能', s => s.scope === 'user'], ['内置 / 公共技能', s => s.scope !== 'user']];
+    let shown = 0;
     for (const [title, fn] of groups) {
+      const items = skills.filter(fn).filter(match);
+      // 筛选中：空分组直接隐藏（"我的"范围下仍保留分组，以便显示创建提示）
+      if ((q || fscope) && !items.length && !(fscope === 'user' && !q && title === '我的技能')) continue;
       box.append(el('div', 'group', title));
-      const items = skills.filter(fn);
       if (!items.length) box.append(el('div', 'empty', title === '我的技能' ? '还没有，点击"新建技能"或在对话中让 AI 帮你创建' : '无'));
       for (const s of items) {
+        shown++;
         const b = el('button', 'sk'); b.dataset.name = s.name;
-        const n = el('div', 'n', s.name); n.append(el('span', 'badge ' + s.scope, SCOPE[s.scope]));
-        b.append(n, el('div', 'ds', s.description));
+        const n = el('div', 'n'); n.append(el('span', '', ''), el('span', 'badge ' + s.scope, SCOPE[s.scope]));
+        n.firstChild.append(hl(s.name, q));
+        const ds = el('div', 'ds'); ds.append(hl(s.description || '', q));
+        b.append(n, ds);
         b.addEventListener('click', () => openSkill(s.name));
         box.append(b);
       }
     }
+    if (!shown && (q || fscope) && skills.length) {
+      const e = el('div', 'sk-none', '没有匹配的技能');
+      const c = el('button', '', '清除筛选'); c.type = 'button';
+      c.addEventListener('click', () => { fq = ''; fscope = ''; $('skillSearch').value = ''; renderList(); });
+      e.append(el('br'), c); box.append(e);
+    }
     markActive();
-    if (select) openSkill(select);
   }
+
+  let st;
+  $('skillSearch').addEventListener('input', e => { clearTimeout(st); st = setTimeout(() => { fq = e.target.value.trim(); renderList(); }, 100); });
+  $('skillSearch').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; fq = ''; renderList(); } });
+  addEventListener('keydown', e => {
+    if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) && !$('dlg').open) { e.preventDefault(); $('skillSearch').focus(); }
+  });
   function markActive() {
     document.querySelectorAll('.sk').forEach(b => b.classList.toggle('active', !!current && b.dataset.name === current.meta.name));
   }
@@ -220,32 +337,62 @@ dialog .err{color:#ffb3b3;font-size:13px;margin-top:8px;min-height:1em}
     const h = el('h2', '', meta.name); h.append(el('span', 'badge ' + meta.scope, SCOPE[meta.scope]));
     left.append(h, el('p', '', meta.description));
     const btns = el('div', 'btns');
-    const btn = (label, fn, cls) => { const b = el('button', 'iconbtn' + (cls ? ' ' + cls : ''), label); b.addEventListener('click', fn); btns.append(b); return b; };
-    btn('💬 在对话中使用', () => { location.href = 'agent.html?q=' + encodeURIComponent('请使用技能 ' + meta.name + ' 帮我：'); });
+    const btn = (label, fn, cls, ic) => { const b = el('button', 'iconbtn' + (cls ? ' ' + cls : '')); if (ic) b.innerHTML = icon(ic); b.append(label); b.addEventListener('click', fn); btns.append(b); return b; };
+    btn('在对话中使用', () => { location.href = 'agent.html?q=' + encodeURIComponent('请使用技能 ' + meta.name + ' 帮我：'); }, '', 'message');
     if (editable) {
-      btn('💾 保存', save, 'primary');
-      btn('＋ 新文件', addFile);
+      btn('保存', save, 'primary', 'save');
+      btn('新文件', addFile, '', 'plus');
     }
-    btn('⤓ 导出 zip', () => { location.href = '/api/skills/' + encodeURIComponent(meta.name) + '/export'; });
-    btn('⧉ 复制为我的技能', fork);
-    if (editable) btn('🗑 删除', removeSkill, 'danger');
+    btn('导出', () => { location.href = '/api/skills/' + encodeURIComponent(meta.name) + '/export'; }, '', 'download');
+    btn('复制为我的技能', fork, '', 'fork');
+    if (editable) btn('删除', removeSkill, 'danger', 'trash');
     head.append(left, btns);
 
     const ed = el('div', 'ed');
     const nav = el('div', 'files-nav');
     const paths = Object.keys(current.files).filter(p => !current.deleted.has(p)).sort((a, b) => (a === 'SKILL.md' ? -1 : b === 'SKILL.md' ? 1 : a.localeCompare(b)));
+    nav.append(el('div', 'files-title', '文件 · ' + paths.length));
+    let curDir = null;
     for (const p of paths) {
+      const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
+      if (dir !== curDir) { curDir = dir; if (dir) nav.append(el('div', 'files-dir', dir + '/')); }
       const f = current.files[p];
-      const b = el('button', 'fbtn' + (p === current.active ? ' active' : '') + ((f.text && f.content !== f.orig) || current.added.has(p) ? ' dirty' : ''));
-      const name = el('span', '', p);
-      b.append(name, el('small', '', f.content != null ? '' : fmt(f.size)));
+      const dirty = (f.text && f.content !== f.orig) || current.added.has(p);
+      const b = el('button', 'fitem' + (p === current.active ? ' active' : '') + (dirty ? ' dirty' : '') + (dir ? ' nested' : ''));
+      const [kind, ext] = fileKind(p);
+      const fi = el('span', 'fkind k-' + kind); fi.textContent = ext;
+      const meta = el('span', 'fmeta');
+      meta.append(el('span', 'fname', p.slice(p.lastIndexOf('/') + 1)));
+      const sub = el('span', 'fsub');
+      if (f.text && f.content != null) { const lines = f.content ? f.content.split('\n').length : 0; sub.textContent = lines + ' 行'; }
+      else sub.textContent = fmt(f.size);
+      meta.append(sub);
+      b.append(fi, meta);
+      if (dirty) b.append(el('span', 'fdot'));
       b.addEventListener('click', async () => { current.active = p; try { await ensureContent(p); } catch (e) { toast(e.message, true); } renderDetail(); });
       nav.append(b);
     }
 
     const editor = el('div', 'editor');
     const f = current.files[current.active];
-    const pathRow = el('div', 'path'); pathRow.append(el('span', '', current.active));
+    const isText = f && f.text && f.content != null;
+    // Markdown 文件默认可预览；其余文本文件也提供预览（代码块）
+    const canPreview = isText;
+    if (canPreview && viewMode !== 'preview' && viewMode !== 'source') viewMode = 'preview';
+
+    const pathRow = el('div', 'path');
+    pathRow.append(el('span', 'path-name', current.active));
+    const rowRight = el('div', 'path-right');
+    if (canPreview) {
+      const seg = el('div', 'vseg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', '查看方式');
+      for (const [m, label] of [['preview', '预览'], ['source', editable ? '编辑' : '源码']]) {
+        const b = el('button', viewMode === m ? 'on' : ''); b.type = 'button'; b.textContent = label;
+        b.setAttribute('aria-pressed', viewMode === m);
+        b.addEventListener('click', () => { viewMode = m; renderDetail(); });
+        seg.append(b);
+      }
+      rowRight.append(seg);
+    }
     if (editable && current.active !== 'SKILL.md') {
       const del = el('button', 'iconbtn danger', '删除此文件');
       del.addEventListener('click', () => {
@@ -254,10 +401,27 @@ dialog .err{color:#ffb3b3;font-size:13px;margin-top:8px;min-height:1em}
         else current.deleted.add(current.active);
         current.active = 'SKILL.md'; renderDetail();
       });
-      pathRow.append(del);
+      rowRight.append(del);
     }
+    pathRow.append(rowRight);
     editor.append(pathRow);
-    if (f && f.text && f.content != null) {
+
+    if (isText && viewMode === 'preview') {
+      const ext = current.active.slice(current.active.lastIndexOf('.') + 1).toLowerCase();
+      const view = el('div', 'preview-pane');
+      if (ext === 'md') {
+        const {body, front} = splitFrontmatter(f.content);
+        if (front) {
+          const fm = el('div', 'frontmatter');
+          for (const [k, v] of front) { const row = el('div', 'fm-row'); row.append(el('span', 'fm-k', k), el('span', 'fm-v', v)); fm.append(row); }
+          view.append(fm);
+        }
+        const md = el('div', 'md'); md.innerHTML = renderMd(body); view.append(md);
+      } else {
+        view.append(codeBlock(f.content, ext));
+      }
+      editor.append(view);
+    } else if (isText) {
       const ta = el('textarea'); ta.value = f.content; ta.readOnly = !editable; ta.spellcheck = false;
       ta.setAttribute('aria-label', current.active);
       ta.addEventListener('input', () => {
@@ -271,7 +435,7 @@ dialog .err{color:#ffb3b3;font-size:13px;margin-top:8px;min-height:1em}
       editor.append(ta);
     } else if (f && !f.text) {
       const b = el('div', 'bin', '二进制文件（' + fmt(f.size) + '），不支持在线编辑。 ');
-      const a = el('a', '', '下载'); a.style.color = 'var(--cyan)';
+      const a = el('a', '', '下载'); 
       a.href = '/api/skills/' + encodeURIComponent(meta.name) + '/files/' + current.active.split('/').map(encodeURIComponent).join('/') + '?raw=1';
       b.append(a); editor.append(b);
     } else {
@@ -285,6 +449,52 @@ dialog .err{color:#ffb3b3;font-size:13px;margin-top:8px;min-height:1em}
   }
 
   const fmt = n => n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB';
+
+  // 拆分 Markdown 顶部 YAML frontmatter，返回 {front:[[k,v]], body}
+  function splitFrontmatter(text) {
+    const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text || '');
+    if (!m) return {front: null, body: text || ''};
+    const front = [];
+    for (const line of m[1].split(/\r?\n/)) {
+      const i = line.indexOf(':');
+      if (i < 0) continue;
+      const k = line.slice(0, i).trim();
+      let v = line.slice(i + 1).trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) { try { v = JSON.parse(v); } catch { v = v.slice(1, -1); } }
+      if (k) front.push([k, v]);
+    }
+    return {front, body: (text || '').slice(m[0].length)};
+  }
+
+  // 只读代码块：行号 + 语言角标（不引语法高亮库）
+  function codeBlock(text, lang) {
+    const wrap = el('div', 'codeview');
+    const bar = el('div', 'code-bar'); bar.append(el('span', 'code-lang', (lang || 'text').toUpperCase()));
+    const copy = el('button', 'code-copy'); copy.type = 'button'; copy.innerHTML = icon('copy'); copy.append('复制');
+    copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(text); toast('已复制'); } catch { toast('复制失败', true); } });
+    bar.append(copy);
+    const lines = (text || '').split('\n');
+    const gutter = el('div', 'code-gutter'); gutter.textContent = lines.map((_, i) => i + 1).join('\n');
+    const pre = el('pre', 'code-body'); pre.append(el('code', '', text || ''));
+    const body = el('div', 'code-scroll'); body.append(gutter, pre);
+    wrap.append(bar, body);
+    return wrap;
+  }
+
+  // 文件类型 → [色系 key, 角标文字]
+  function fileKind(path) {
+    const name = path.slice(path.lastIndexOf('/') + 1);
+    if (name === 'SKILL.md') return ['skill', 'SK'];
+    const ext = (name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : '').toLowerCase();
+    const M = {
+      py: ['py', 'PY'], md: ['md', 'MD'], json: ['json', '{ }'], txt: ['txt', 'TXT'],
+      yaml: ['yaml', 'YML'], yml: ['yaml', 'YML'], csv: ['data', 'CSV'], html: ['web', '<>'],
+      css: ['web', 'CSS'], js: ['web', 'JS'], xml: ['data', 'XML'], sql: ['data', 'SQL'],
+      png: ['img', 'IMG'], jpg: ['img', 'IMG'], jpeg: ['img', 'IMG'], gif: ['img', 'IMG'],
+      webp: ['img', 'IMG'], zip: ['bin', 'ZIP'],
+    };
+    return M[ext] || ['bin', (ext || 'FILE').slice(0, 3).toUpperCase()];
+  }
 
   async function save() {
     const name = current.meta.name;

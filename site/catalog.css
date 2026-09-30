@@ -1,0 +1,108 @@
+/* 展示页目录（作品 / 工具 / 课程）—— 依赖 tokens.css + agent.css */
+body{overflow:auto;display:block}
+.bar{position:sticky;top:0}
+.wrap{width:min(1180px,calc(100% - 40px));margin:0 auto;padding:40px 0 80px}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:28px}
+.page-head .count{font:12px/1 var(--mono);color:var(--text-3);white-space:nowrap;padding-bottom:6px}
+
+/* 工具栏 */
+.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.search{flex:1;min-width:220px;max-width:420px;display:flex;align-items:center;gap:8px;height:38px;padding:0 10px 0 12px;
+  border:1px solid var(--line-2);border-radius:10px;background:var(--surface);color:var(--text-3);transition:border-color var(--dur),box-shadow var(--dur)}
+.search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.search input{flex:1;min-width:0;border:none;background:none;outline:none;font:14px/1 var(--sans);color:var(--text)}
+.search input::placeholder{color:var(--text-3)}
+.search input::-webkit-search-cancel-button{cursor:pointer}
+.search kbd{font:11px/1 var(--mono);color:var(--text-3);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:3px 6px;background:var(--bg)}
+.search:focus-within kbd{display:none}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.sel{position:relative}
+.sel select{appearance:none;-webkit-appearance:none;height:38px;padding:0 32px 0 12px;border:1px solid var(--line-2);border-radius:10px;background:var(--surface);
+  font:13px/1 var(--sans);color:var(--text);cursor:pointer;transition:border-color var(--dur)}
+.sel select:hover{border-color:var(--text-3)}
+.sel select:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sel:after{content:"";position:absolute;right:13px;top:14px;width:6px;height:6px;border-right:1.5px solid var(--text-3);border-bottom:1.5px solid var(--text-3);transform:rotate(45deg);pointer-events:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.seg{display:flex;padding:3px;gap:2px;height:38px;border:1px solid var(--line-2);border-radius:10px;background:var(--bg-2)}
+.seg button{width:32px;border:none;border-radius:7px;background:none;color:var(--text-3);cursor:pointer;display:grid;place-items:center;transition:background var(--dur),color var(--dur)}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:var(--sh-1)}
+.seg .i{width:15px;height:15px}
+
+/* 分类标签 */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+.chip{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r-full);background:var(--surface);
+  font-size:13px;color:var(--text-2);cursor:pointer;transition:border-color var(--dur),background var(--dur),color var(--dur)}
+.chip:hover{border-color:var(--line-2);color:var(--text)}
+.chip .sw{width:8px;height:8px;border-radius:3px;background:var(--cv-fg)}
+.chip .n{font:11px/1 var(--mono);color:var(--text-3)}
+.chip.on{background:var(--text);border-color:var(--text);color:#fff}
+.chip.on .n{color:rgba(255,255,255,.6)}
+.chip.on .sw{box-shadow:0 0 0 1.5px rgba(255,255,255,.7)}
+
+.result{display:flex;align-items:center;gap:12px;margin:22px 0 14px;font:12px/1 var(--mono);color:var(--text-3)}
+.result .clear{border:none;background:none;padding:0;font:500 12px/1 var(--sans);color:var(--accent);cursor:pointer}
+.result .clear:hover{text-decoration:underline;text-underline-offset:3px}
+.cat-loading{padding:40px 0;color:var(--text-3);font-size:13px}
+
+/* 卡片：网格 */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.ccard{display:flex;flex-direction:column;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-lg);overflow:hidden;
+  transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease);animation:rise .3s var(--ease) both}
+a.ccard:hover{border-color:var(--line-2);box-shadow:var(--sh-2);transform:translateY(-2px)}
+.cv{position:relative;height:116px;background:var(--cv-bg);border-bottom:1px solid var(--line);overflow:hidden;display:flex;align-items:flex-end;padding:0 20px 16px}
+.cv:before{content:"";position:absolute;inset:0;background-image:radial-gradient(color-mix(in srgb,var(--cv-fg) 18%,transparent) 1px,transparent 1px);background-size:14px 14px;
+  mask-image:linear-gradient(120deg,transparent 30%,#000);-webkit-mask-image:linear-gradient(120deg,transparent 30%,#000)}
+.cv-l{position:relative;font:600 52px/1 var(--sans);letter-spacing:-.04em;color:var(--cv-fg);transition:transform .35s var(--ease)}
+a.ccard:hover .cv-l{transform:translateY(-3px)}
+.cc-body{flex:1;padding:18px 20px 0;display:flex;flex-direction:column;gap:8px}
+.cc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ccard h3{margin:0;font-size:16px;font-weight:600;letter-spacing:-.015em;line-height:1.4}
+.ccard p{margin:0;color:var(--text-2);font-size:13.5px;line-height:1.7;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ccard mark{background:rgba(250,204,21,.35);color:inherit;border-radius:3px;padding:0 1px}
+.st{flex:none;display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:var(--r-full);border:1px solid rgba(21,128,61,.25);background:var(--ok-soft);color:var(--ok);font:500 11px/1 var(--sans);white-space:nowrap;margin-top:1px}
+.st:before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.cc-foot{display:flex;align-items:center;gap:8px;margin-top:16px;padding:14px 20px 16px;border-top:1px solid var(--line)}
+.cat{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;background:var(--cv-bg);color:var(--cv-fg);font:500 11.5px/1 var(--sans);white-space:nowrap}
+.go{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:500;color:var(--text)}
+.go .arrow{display:grid;place-items:center;color:var(--text-3);transition:transform var(--dur),color var(--dur)}
+.go .arrow .i{width:14px;height:14px}
+a.ccard:hover .go .arrow{transform:translate(2px,-2px);color:var(--accent)}
+.ccard.soon .go{color:var(--text-3)}
+.ccard.soon .st{border-color:var(--line);background:var(--bg);color:var(--text-3)}
+
+/* 卡片：列表 */
+.cards.list{grid-template-columns:1fr;gap:0;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);overflow:hidden}
+.cards.list .ccard{flex-direction:row;align-items:center;gap:16px;padding:14px 18px;border:none;border-radius:0;border-bottom:1px solid var(--line);background:none}
+.cards.list .ccard:last-child{border-bottom:none}
+.cards.list a.ccard:hover{transform:none;box-shadow:none;background:var(--bg)}
+.cards.list .cv{flex:none;width:48px;height:48px;border-radius:12px;border:1px solid var(--line);padding:0;align-items:center;justify-content:center}
+.cards.list .cv:before{display:none}
+.cards.list .cv-l{font-size:19px;letter-spacing:-.02em;transform:none}
+.cards.list .cc-body{padding:0;gap:3px;min-width:0}
+.cards.list .cc-top{justify-content:flex-start}
+.cards.list .ccard h3{font-size:15px}
+.cards.list .ccard p{-webkit-line-clamp:1;font-size:13px}
+.cards.list .cc-foot{margin:0;padding:0;border:none;flex:none;gap:14px}
+.cards.list .cards,.cards.list .empty-state{border:none}
+
+/* 空状态 */
+.empty-state{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:64px 20px;border:1px dashed var(--line-2);border-radius:var(--r-lg);background:var(--surface)}
+.es-ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;border:1px solid var(--line);background:var(--bg);color:var(--text-2);margin-bottom:14px}
+.es-ic .i{width:19px;height:19px}
+.empty-state h3{margin:0;font-size:16px;font-weight:600}
+.empty-state p{margin:6px 0 0;color:var(--text-2);font-size:13.5px}
+.empty-state .iconbtn{margin-top:16px}
+
+@media(max-width:720px){
+  .wrap{width:calc(100% - 28px);padding-top:28px}
+  .search{max-width:none;flex-basis:100%}
+  .tb-right{margin-left:0;width:100%}
+  .tb-right .sel{flex:1}
+  .tb-right .sel select{width:100%}
+  .chips{flex-wrap:nowrap;overflow-x:auto;margin-inline:-14px;padding-inline:14px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none}
+  .cards{grid-template-columns:1fr}
+  .cards.list .cc-foot .cat{display:none}
+}

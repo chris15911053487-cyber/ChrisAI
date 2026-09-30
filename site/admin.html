@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>后台管理｜Chris Li · AI Agent</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#FAFAF9">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
+<link rel="stylesheet" href="tokens.css?v=20260930e">
+<link rel="stylesheet" href="agent.css?v=20260930e">
+<style>
+body{overflow:auto;display:block}
+.bar{position:sticky;top:0}
+.wrap{width:min(1080px,calc(100% - 40px));margin:0 auto;padding:36px 0 72px}
+
+/* 登录 */
+.login{max-width:400px;margin:9vh auto;border:1px solid var(--line);background:var(--surface);border-radius:var(--r-lg);padding:32px;box-shadow:var(--sh-2)}
+.login .lk{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--line);background:var(--bg);margin-bottom:18px}
+.login .lk .i{width:18px;height:18px}
+.login h2{margin:0 0 6px;font-size:20px;font-weight:600;letter-spacing:-.02em}
+.login p{margin:0 0 22px;color:var(--text-2);font-size:13.5px;line-height:1.65}
+.login label{display:block;font-size:13px;font-weight:500;color:var(--text-2);margin:0 0 6px}
+.login .err{color:var(--err);font-size:13px;margin-top:10px;min-height:1em}
+.login button{margin-top:14px;width:100%;height:38px}
+
+/* 分区 */
+.section{margin-bottom:36px}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 2px 12px}
+.section-head h3{margin:0;font-size:17px;font-weight:600;letter-spacing:-.015em;display:flex;align-items:center;gap:10px}
+.section-head h3 .i{width:17px;height:17px;color:var(--text-3)}
+.section-head .count{font:11.5px/1 var(--mono);color:var(--text-3)}
+.sh-right{display:flex;gap:12px;align-items:center}
+
+.tbl{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.trow{display:grid;grid-template-columns:44px 1fr 1.4fr 90px 170px;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:none}
+.trow:not(.head):hover{background:var(--bg)}
+.trow.head{background:var(--bg);font:500 11px/1 var(--mono);color:var(--text-3);letter-spacing:.05em;text-transform:uppercase;padding-block:10px}
+.trow .c-ic{font-size:20px;display:grid;place-items:center;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--bg)}
+.trow.head .c-ic{border:none;background:none}
+.trow .c-ic .i{width:16px;height:16px;color:var(--text-3)}
+.trow .c-title{font-weight:600;font-size:14px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.trow .c-title small{font:400 11px/1.4 var(--mono);color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .c-desc{color:var(--text-2);font-size:13px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.trow .c-ops{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.trow .c-ops .iconbtn{height:28px;padding:0 10px;font-size:12px}
+.pill{display:inline-flex;align-items:center;gap:6px;font:500 11px/1 var(--mono);height:22px;padding:0 8px;border-radius:var(--r-full);border:1px solid var(--line);color:var(--text-2)}
+.pill:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.on{color:var(--ok);border-color:rgba(21,128,61,.28);background:var(--ok-soft)}
+.pill.off{color:var(--text-3);background:var(--bg)}
+.empty{padding:22px;color:var(--text-3);font-size:13px;text-align:center}
+
+/* 对话框补充 */
+dialog{width:min(520px,92vw)}
+dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+dialog .fieldhint{font-size:12px;line-height:1.55;color:var(--text-3);margin-top:6px}
+.chk{display:flex;align-items:center;gap:8px;margin-top:14px}
+.chk input{width:16px;height:16px;accent-color:var(--text)}
+
+@media(max-width:720px){
+  .trow{grid-template-columns:36px 1fr;gap:8px}
+  .trow .c-desc,.trow.head{display:none}
+  .trow .c-ops{grid-column:1 / -1;justify-content:flex-start;margin-top:6px}
+  .trow .c-flags{grid-column:1 / -1}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="left">
+    <a class="logo" href="index.html" aria-label="返回首页">CL</a>
+    <h1>后台管理<small>卡片配置</small></h1>
+  </div>
+  <div class="actions">
+    <a class="iconbtn ghost" href="index.html"><i data-i="arrow-left"></i>返回站点</a>
+    <button class="iconbtn" id="logoutBtn" hidden><i data-i="logout"></i>退出</button>
+  </div>
+</header>
+
+<!-- 登录 -->
+<div class="wrap" id="loginWrap">
+  <div class="login">
+    <div class="lk"><i data-i="shield"></i></div>
+    <h2>管理员登录</h2>
+    <p>请输入管理令牌（ADMIN_TOKEN）。令牌仅保存在本浏览器会话中，用于验证管理操作。</p>
+    <label for="tokenInput">管理令牌</label>
+    <input class="field" type="password" id="tokenInput" placeholder="粘贴 ADMIN_TOKEN" autocomplete="current-password">
+    <div class="err" id="loginErr"></div>
+    <button class="iconbtn primary" id="loginBtn">进入</button>
+  </div>
+</div>
+
+<!-- 管理面板 -->
+<div class="wrap" id="panel" hidden></div>
+
+<dialog id="dlg">
+  <form method="dialog" id="dlgForm">
+    <h3 id="dlgTitle">编辑卡片</h3>
+    <input type="hidden" id="f_id">
+    <input type="hidden" id="f_section">
+    <label for="f_title">标题</label>
+    <input id="f_title" maxlength="120" placeholder="例如：ERP 解决方案工作台">
+    <label for="f_desc">描述</label>
+    <textarea id="f_desc" maxlength="500" placeholder="一句话介绍这个卡片的内容"></textarea>
+    <label for="f_url">跳转链接</label>
+    <input id="f_url" maxlength="1000" placeholder="http://192.168.1.50:18081/ 或 :18081 或 /page.html">
+    <div class="fieldhint">支持：① 完整网址 http(s)://…（可跳任意主机/IP）② 只填端口 :18081 → 自动用当前访问主机 ③ 站内路径 /xxx.html</div>
+    <div class="two">
+      <div>
+        <label for="f_category">分类</label>
+        <input id="f_category" maxlength="40" list="catList" placeholder="例如：ERP / 数据分析">
+        <datalist id="catList"></datalist>
+      </div>
+      <div>
+        <label for="f_tag">状态标签</label>
+        <input id="f_tag" maxlength="40" placeholder="进行中 / 已上线 / 新">
+      </div>
+    </div>
+    <div class="fieldhint">分类用于展示页筛选，自由填写；可从已有分类中选择。</div>
+    <div class="two">
+      <div>
+        <label for="f_icon">图标（emoji，可留空）</label>
+        <input id="f_icon" maxlength="16" placeholder="🎨">
+      </div>
+      <div>
+        <label for="f_sort">排序（小的在前）</label>
+        <input id="f_sort" type="number" value="0">
+      </div>
+    </div>
+    <div class="two">
+      <div class="chk">
+        <input type="checkbox" id="f_enabled" checked>
+        <label for="f_enabled" style="margin:0;color:var(--text)">启用（展示页可见）</label>
+      </div>
+    </div>
+    <div class="err" id="dlgErr"></div>
+    <div class="row">
+      <button class="iconbtn" value="cancel" formnovalidate>取消</button>
+      <button class="iconbtn primary" value="ok" id="dlgOk">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="icons.js?v=20260930e"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const SECTIONS = [
+    { key: 'tools',   label: 'AI 工具', icon: 'wrench' },
+    { key: 'works',   label: 'AI 作品', icon: 'grid' },
+    { key: 'courses', label: 'AI 课程', icon: 'cap' },
+  ];
+  const TOKEN_KEY = 'cl_admin_token';
+  let token = sessionStorage.getItem(TOKEN_KEY) || '';
+
+  let tt;
+  function toast(msg, err) {
+    const t = $('toast'); t.textContent = msg; t.classList.toggle('err', !!err); t.classList.add('show');
+    clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  async function api(path, opts = {}) {
+    const headers = Object.assign({ 'X-Admin-Token': token }, opts.headers || {});
+    const r = await fetch(path, { credentials: 'same-origin', ...opts, headers });
+    let d = null; try { d = await r.json(); } catch {}
+    if (r.status === 401) { const e = new Error('令牌无效或已过期'); e.auth = true; throw e; }
+    if (!r.ok) {
+      let msg = d && d.detail;
+      if (Array.isArray(msg)) msg = msg.map(x => x.msg).join('；');
+      throw new Error(msg || ('请求失败（' + r.status + '）'));
+    }
+    return d;
+  }
+  const jsend = (path, body, method) => api(path, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  /* ---------- 登录 ---------- */
+  function showLogin(msg) {
+    $('panel').hidden = true; $('loginWrap').hidden = false; $('logoutBtn').hidden = true;
+    if (msg) $('loginErr').textContent = msg;
+    $('tokenInput').focus();
+  }
+  async function tryLogin(t) {
+    token = t;
+    // 用管理端只读接口验证令牌
+    await api('/api/admin/cards');
+    sessionStorage.setItem(TOKEN_KEY, token);
+    $('loginWrap').hidden = true; $('panel').hidden = false; $('logoutBtn').hidden = false;
+    await renderPanel();
+  }
+  $('loginBtn').addEventListener('click', async () => {
+    const t = $('tokenInput').value.trim();
+    $('loginErr').textContent = '';
+    if (!t) { $('loginErr').textContent = '请输入令牌'; return; }
+    $('loginBtn').disabled = true;
+    try { await tryLogin(t); }
+    catch (e) { $('loginErr').textContent = e.auth ? '令牌无效' : e.message; token = ''; }
+    finally { $('loginBtn').disabled = false; }
+  });
+  $('tokenInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+  $('logoutBtn').addEventListener('click', () => { sessionStorage.removeItem(TOKEN_KEY); token = ''; showLogin(); });
+
+  /* ---------- 面板 ---------- */
+  let cache = { tools: [], works: [], courses: [] };
+
+  async function renderPanel() {
+    let data;
+    try { data = await api('/api/admin/cards'); }
+    catch (e) { if (e.auth) return showLogin('令牌无效'); return toast(e.message, true); }
+    cache = { tools: [], works: [], courses: [] };
+    for (const c of data.cards) (cache[c.section] = cache[c.section] || []).push(c);
+
+    const panel = $('panel'); panel.replaceChildren();
+    for (const sec of SECTIONS) {
+      const list = cache[sec.key] || [];
+      const wrap = el('div', 'section');
+      const head = el('div', 'section-head');
+      const h = el('h3'); h.innerHTML = icon(sec.icon); h.append(el('span', null, sec.label));
+      const cnt = el('span', 'count', list.length + ' 张卡片');
+      const addBtn = el('button', 'iconbtn primary'); addBtn.innerHTML = icon('plus'); addBtn.append('新增卡片');
+      addBtn.addEventListener('click', () => openDlg(sec.key, null));
+      const right = el('div', 'sh-right');
+      right.append(cnt, addBtn);
+      head.append(h, right);
+      wrap.append(head);
+
+      const tbl = el('div', 'tbl');
+      const hr = el('div', 'trow head');
+      hr.append(el('div', 'c-ic', ''), el('div', 'c-title', '标题 / 分类 · 链接'), el('div', 'c-desc', '描述'), el('div', 'c-flags', '状态'), el('div', 'c-ops', ''));
+      tbl.append(hr);
+      if (!list.length) tbl.append(el('div', 'empty', '暂无卡片，点击"新增卡片"添加'));
+      for (const c of list) tbl.append(rowFor(c));
+      wrap.append(tbl);
+      panel.append(wrap);
+    }
+  }
+
+  function rowFor(c) {
+    const row = el('div', 'trow');
+    const ic = el('div', 'c-ic'); if (c.icon) ic.textContent = c.icon; else ic.innerHTML = icon('link'); row.append(ic);
+
+    const t = el('div', 'c-title');
+    t.append(el('span', null, c.title));
+    t.append(el('small', null, (c.category ? c.category + ' · ' : '') + (c.url || '（无链接）')));
+    row.append(t);
+
+    row.append(el('div', 'c-desc', c.description || ''));
+
+    const flags = el('div', 'c-flags');
+    flags.append(el('span', 'pill ' + (c.enabled ? 'on' : 'off'), c.enabled ? '已启用' : '已停用'));
+    row.append(flags);
+
+    const ops = el('div', 'c-ops');
+    const edit = el('button', 'iconbtn', '编辑');
+    edit.addEventListener('click', () => openDlg(c.section, c));
+    const toggle = el('button', 'iconbtn', c.enabled ? '停用' : '启用');
+    toggle.addEventListener('click', async () => {
+      try { await jsend('/api/admin/cards/' + c.id, { enabled: !c.enabled }, 'PUT'); toast('已更新'); renderPanel(); }
+      catch (e) { toast(e.message, true); }
+    });
+    const del = el('button', 'iconbtn danger', '删除');
+    del.addEventListener('click', async () => {
+      if (!confirm('确定删除卡片「' + c.title + '」？')) return;
+      try { await api('/api/admin/cards/' + c.id, { method: 'DELETE' }); toast('已删除'); renderPanel(); }
+      catch (e) { toast(e.message, true); }
+    });
+    ops.append(edit, toggle, del);
+    row.append(ops);
+    return row;
+  }
+
+  /* ---------- 新增 / 编辑对话框 ---------- */
+  function openDlg(section, card) {
+    $('dlgTitle').textContent = card ? '编辑卡片' : '新增卡片';
+    $('dlgErr').textContent = '';
+    $('f_id').value = card ? card.id : '';
+    $('f_section').value = section;
+    $('f_title').value = card ? card.title : '';
+    $('f_desc').value = card ? card.description : '';
+    $('f_url').value = card ? card.url : '';
+    $('f_icon').value = card ? card.icon : '';
+    $('f_tag').value = card ? card.tag : '';
+    $('f_category').value = card ? (card.category || '') : '';
+    const cats = [...new Set((cache[section] || []).map(c => c.category).filter(Boolean))].sort();
+    $('catList').replaceChildren(...cats.map(v => { const o = document.createElement('option'); o.value = v; return o; }));
+    $('f_sort').value = card ? card.sort : 0;
+    $('f_enabled').checked = card ? !!card.enabled : true;
+    $('dlg').showModal();
+    $('f_title').focus();
+  }
+
+  $('dlgForm').addEventListener('submit', async e => {
+    if (e.submitter && e.submitter.value === 'cancel') return;
+    e.preventDefault();
+    const id = $('f_id').value;
+    const body = {
+      section: $('f_section').value,
+      title: $('f_title').value.trim(),
+      description: $('f_desc').value.trim(),
+      url: $('f_url').value.trim(),
+      icon: $('f_icon').value.trim(),
+      tag: $('f_tag').value.trim(),
+      category: $('f_category').value.trim(),
+      sort: parseInt($('f_sort').value, 10) || 0,
+      enabled: $('f_enabled').checked,
+    };
+    if (!body.title) { $('dlgErr').textContent = '标题不能为空'; return; }
+    $('dlgOk').disabled = true;
+    try {
+      if (id) await jsend('/api/admin/cards/' + id, body, 'PUT');
+      else await jsend('/api/admin/cards', body, 'POST');
+      $('dlg').close(); toast('已保存'); renderPanel();
+    } catch (e2) { $('dlgErr').textContent = e2.auth ? '令牌无效，请重新登录' : e2.message; }
+    finally { $('dlgOk').disabled = false; }
+  });
+
+  /* ---------- 启动 ---------- */
+  if (token) { tryLogin(token).catch(() => showLogin()); }
+  else { showLogin(); }
+})();
+</script>
+</body>
+</html>

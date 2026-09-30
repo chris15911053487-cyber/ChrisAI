@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import httpx
 
-from . import config, skills, workspace
+from . import config, knowledge, skills, workspace
 from .skills import SkillError
 
 logger = logging.getLogger("agent.tools")
@@ -66,6 +66,26 @@ TOOLS: list[dict] = [
         {"name": {"type": "string"}, "files": _FILES_PARAM,
          "delete": {"type": "array", "items": {"type": "string"}}}, ["name"]),
 ]
+
+# 仅在当前会话选择了知识库时提供给模型
+KB_TOOLS: list[dict] = [
+    _fn("search_knowledge",
+        "在用户为本会话选择的知识库中检索（关键词 + 语义混合），返回最相关的若干片段（含文档 ID、文件名、片段序号）。"
+        "query 可以是完整问题，也可以是关键词；结果不理想时换个说法再检索。",
+        {"query": {"type": "string", "description": "检索关键词或问题"},
+         "top_k": {"type": "integer", "description": "返回片段数，默认 6，最多 12"}},
+        ["query"]),
+    _fn("read_knowledge",
+        "按顺序读取知识库中某篇文档的连续片段，用于查看检索命中片段的上下文。",
+        {"doc_id": {"type": "string", "description": "search_knowledge 返回的文档 ID"},
+         "start": {"type": "integer", "description": "起始片段序号（从 0 开始）"},
+         "count": {"type": "integer", "description": "读取片段数，默认 3，最多 8"}},
+        ["doc_id"]),
+]
+
+
+def tools_for(kb_ids: list[str]) -> list[dict]:
+    return TOOLS + KB_TOOLS if kb_ids else TOOLS
 
 
 @dataclass
@@ -162,7 +182,7 @@ async def _run_in_sandbox(sid: str, entry: dict, args: list, stdin: str, skill_f
     )
 
 
-async def execute(name: str, raw_args: str, vid: str, sid: str) -> ToolResult:
+async def execute(name: str, raw_args: str, vid: str, sid: str, kb_ids: Optional[list[str]] = None) -> ToolResult:
     try:
         args = json.loads(raw_args or "{}")
         if not isinstance(args, dict):
@@ -170,12 +190,59 @@ async def execute(name: str, raw_args: str, vid: str, sid: str) -> ToolResult:
     except ValueError:
         return ToolResult("参数不是合法的 JSON 对象，请修正后重试", ok=False, summary="参数错误")
     try:
+        if name in ("search_knowledge", "read_knowledge"):
+            return await _dispatch_kb(name, args, kb_ids or [])
         return await _dispatch(name, args, vid, sid)
     except SkillError as e:
         return ToolResult(f"错误：{e}", ok=False, summary=str(e))
     except Exception:
         logger.exception("tool %s failed", name)
         return ToolResult("工具执行出现内部错误", ok=False, summary="内部错误")
+
+
+def _int_arg(v: Any, default: int) -> int:
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
+
+
+async def _dispatch_kb(name: str, a: dict, kb_ids: list[str]) -> ToolResult:
+    if not kb_ids:
+        return ToolResult("当前会话没有选择知识库。请提示用户在输入框上方选择知识库。", ok=False, summary="未选择知识库")
+
+    if name == "search_knowledge":
+        query = str(a.get("query", "")).strip()[:500]
+        if not query:
+            raise SkillError("query 不能为空")
+        hits, mode = await knowledge.search(kb_ids, query, _int_arg(a.get("top_k"), 6))
+        if not hits:
+            return ToolResult(f"没有检索到与「{query}」相关的内容。可以换个关键词再试；仍无结果则如实告诉用户知识库中没有相关信息。",
+                              summary=f"检索「{query}」：无结果", detail={"query": query, "mode": mode, "hits": []})
+        blocks = [
+            f"[{i}] 知识库：{h['kb_name']}｜文件：{h['filename']}｜doc_id={h['doc_id']}｜片段 #{h['seq']}\n{h['content']}"
+            for i, h in enumerate(hits, 1)
+        ]
+        text = _clip("\n\n".join(blocks), config.TOOL_RESULT_MAX_CHARS)
+        return ToolResult(
+            text,
+            summary=f"检索「{query}」：{len(hits)} 条结果（{mode}）",
+            detail={"query": query, "mode": mode, "hits": [
+                {"kb": h["kb_name"], "file": h["filename"], "seq": h["seq"], "snippet": h["content"][:300]} for h in hits
+            ]},
+        )
+
+    doc, rows = knowledge.read_chunks(kb_ids, str(a.get("doc_id", "")),
+                                      _int_arg(a.get("start"), 0), _int_arg(a.get("count"), 3))
+    if not rows:
+        return ToolResult(f"{doc['filename']} 没有更多片段（共 {doc['chunks']} 个）", summary=f"读取 {doc['filename']}：无更多内容")
+    text = f"文件：{doc['filename']}（共 {doc['chunks']} 个片段）\n\n" + "\n\n".join(f"[片段 #{r['seq']}]\n{r['content']}" for r in rows)
+    first, last = rows[0]["seq"], rows[-1]["seq"]
+    return ToolResult(
+        _clip(text, config.TOOL_RESULT_MAX_CHARS),
+        summary=f"读取 {doc['filename']} 片段 #{first}–#{last}",
+        detail={"hits": [{"file": doc["filename"], "seq": r["seq"], "snippet": r["content"][:300]} for r in rows]},
+    )
 
 
 async def _dispatch(name: str, a: dict, vid: str, sid: str) -> ToolResult:
@@ -264,4 +331,6 @@ def describe_call(name: str, raw_args: str) -> str:
         "list_files": lambda: "列出工作区文件",
         "create_skill": lambda: "创建技能",
         "update_skill": lambda: f"更新技能 {a.get('name', '')}",
+        "search_knowledge": lambda: f"检索知识库：{str(a.get('query', ''))[:60]}",
+        "read_knowledge": lambda: "阅读知识库文档",
     }.get(name, lambda: name)()
