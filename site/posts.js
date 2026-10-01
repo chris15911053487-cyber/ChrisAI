@@ -305,7 +305,9 @@
       const submit = el('button', 'iconbtn primary', '保存并提交审核'); submit.type = 'button';
       submit.addEventListener('click', () => doSave(true));
       const back = el('a', 'iconbtn ghost'); back.href = 'posts.html'; back.innerHTML = ic('arrow-left'); back.append('返回');
-      actions.append(back, el('span', 'spacer'), save, submit);
+      const importMd = el('button', 'iconbtn ghost', '导入 Markdown'); importMd.type = 'button';
+      importMd.addEventListener('click', importMarkdownFile);
+      actions.append(back, importMd, el('span', 'spacer'), save, submit);
       form.append(row1, row2, edcols, errBox, actions);
       return form;
     }
@@ -400,6 +402,7 @@
         modules: { toolbar: { container: toolbar, handlers: { image: pickImage } } },
       });
       bindImageDropPaste();
+      bindMarkdownShortcuts();
       // 拦截粘贴的 HTML 中内联的 base64 图片：不写入正文，改为异步上传后插入
       quill.clipboard.addMatcher('IMG', (node, delta) => {
         const src = (node.getAttribute && node.getAttribute('src')) || '';
@@ -465,16 +468,28 @@
     function bindImageDropPaste() {
       const rootEl = quill.root;
       rootEl.addEventListener('paste', (e) => {
-        const items = (e.clipboardData && e.clipboardData.items) || [];
+        const cd = e.clipboardData;
+        const items = (cd && cd.items) || [];
         const files = [];
         for (const it of items) {
           if (it.kind === 'file' && it.type && it.type.indexOf('image/') === 0) {
             const f = it.getAsFile(); if (f) files.push(f);
           }
         }
-        if (!files.length) return;        // 非图片粘贴走 Quill 默认处理
-        e.preventDefault();               // 阻止默认内联 base64
-        files.forEach(f => insertImage(f, null));
+        if (files.length) {               // 有图片文件 → 上传
+          e.preventDefault();             // 阻止默认内联 base64
+          files.forEach(f => insertImage(f, null));
+          return;
+        }
+        // 纯文本（无 HTML）且像 Markdown → 用 marked 转换后插入；否则交给 Quill 默认
+        if (cd) {
+          const html = cd.getData('text/html');
+          const text = cd.getData('text/plain');
+          if (!html && text && looksLikeMarkdown(text)) {
+            e.preventDefault();
+            insertMarkdown(text);
+          }
+        }
       });
       rootEl.addEventListener('drop', (e) => {
         const dt = e.dataTransfer;
@@ -491,6 +506,166 @@
           }
         }
         files.forEach((f, i) => insertImage(f, idx == null ? null : idx + i));
+      });
+    }
+
+    // ---- Markdown：导入 .md / 粘贴识别 / 敲语法实时转格式（均纯前端，marked + DOMPurify）----
+
+    // Markdown → 净化后的 HTML（复用 renderHtml 的白名单净化）
+    function mdToHtml(md) {
+      if (!window.marked) return null;
+      try { return renderHtml(window.marked.parse(md || '')); }
+      catch { return null; }
+    }
+
+    // 启发式判断一段纯文本是否像 Markdown（保守，避免普通文本误判）
+    function looksLikeMarkdown(text) {
+      if (!text || text.length < 2) return false;
+      const patterns = [
+        /^#{1,6}\s+\S/m,            // 标题
+        /^\s*[-*+]\s+\S/m,          // 无序列表
+        /^\s*\d+\.\s+\S/m,          // 有序列表
+        /^\s*>\s+\S/m,              // 引用
+        /```[\s\S]*?```/,           // 围栏代码块
+        /\[[^\]]+\]\([^)]+\)/,      // 链接
+        /!\[[^\]]*\]\([^)]+\)/,     // 图片
+        /\*\*[^*\n]+\*\*/,          // 粗体
+        /(^|\s)\*[^*\n]+\*(\s|$)/,  // 斜体
+        /(^|\s)`[^`\n]+`(\s|$)/,    // 行内代码
+        /^\s*(?:[-*_]\s*){3,}$/m,   // 分隔线
+      ];
+      let hits = 0;
+      for (const re of patterns) if (re.test(text)) hits++;
+      return hits >= 1;
+    }
+
+    // 在当前光标处插入一段 Markdown（转 HTML 后粘贴）
+    function insertMarkdown(md) {
+      const html = mdToHtml(md);
+      if (html == null) {               // marked 不可用 → 退回纯文本
+        const range = quill.getSelection(true);
+        quill.insertText(range ? range.index : quill.getLength(), md, 'user');
+        return;
+      }
+      const range = quill.getSelection(true);
+      const idx = range ? range.index : quill.getLength();
+      if (range && range.length) quill.deleteText(idx, range.length, 'user');
+      quill.clipboard.dangerouslyPasteHTML(idx, html, 'user');
+    }
+
+    // 导入 .md 文件 → 转 HTML 灌入编辑器（询问是替换还是追加）
+    function importMarkdownFile() {
+      if (!quill) return;
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.md,.markdown,text/markdown,text/plain';
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) { toast('Markdown 文件过大（上限 2MB）', true); return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const md = String(reader.result || '');
+          const html = mdToHtml(md);
+          if (html == null) { toast('无法解析该文件', true); return; }
+          const hasContent = quill.getLength() > 1;
+          const replace = !hasContent || confirm('导入方式：\n「确定」= 替换当前正文\n「取消」= 追加到正文末尾');
+          if (replace) {
+            quill.setContents(quill.clipboard.convert({ html: html || '<p></p>' }), 'user');
+          } else {
+            quill.clipboard.dangerouslyPasteHTML(quill.getLength(), html, 'user');
+          }
+          toast('已导入 Markdown');
+        };
+        reader.onerror = () => toast('读取文件失败', true);
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+
+    // 敲语法实时转格式：行首前缀（空格触发）+ 行内标记（在行内自动替换）
+    function bindMarkdownShortcuts() {
+      const kb = quill.keyboard;
+
+      // 取光标所在行、光标之前的文本（不依赖 Quill 的 ctx.prefix，它只覆盖当前 leaf）
+      function linePrefix(index) {
+        const info = quill.getLine(index);
+        const line = info && info[0], offset = info && info[1];
+        if (!line) return { text: '', start: index };
+        const start = index - offset;
+        return { text: quill.getText(start, offset), start };
+      }
+
+      // 行首前缀 + 空格 → 块级格式
+      const BLOCK_RULES = [
+        { re: /^(#{1,6})$/, apply: (m) => ({ header: Math.min(m[1].length, 6) }) },
+        { re: /^([-*+])$/, apply: () => ({ list: 'bullet' }) },
+        { re: /^(\d+)\.$/, apply: () => ({ list: 'ordered' }) },
+        { re: /^(>)$/, apply: () => ({ blockquote: true }) },
+      ];
+      kb.addBinding({ key: ' ' }, (range) => {
+        if (range.length) return true;
+        const { text, start } = linePrefix(range.index);
+        for (const rule of BLOCK_RULES) {
+          const m = rule.re.exec(text);
+          if (m) {
+            quill.deleteText(start, text.length, 'user');
+            const fmt = rule.apply(m);
+            for (const k in fmt) quill.formatLine(start, 1, k, fmt[k], 'user');
+            quill.setSelection(start, 0, 'user');
+            return false;                    // 吞掉这个空格
+          }
+        }
+        return true;                         // 其余情况正常输入空格
+      });
+
+      // 围栏代码块：``` + 回车
+      kb.addBinding({ key: 'Enter' }, (range) => {
+        if (range.length) return true;
+        const { text, start } = linePrefix(range.index);
+        if (/^```[a-zA-Z0-9]*$/.test(text)) {
+          quill.deleteText(start, text.length, 'user');
+          quill.formatLine(start, 1, 'code-block', true, 'user');
+          quill.setSelection(start, 0, 'user');
+          return false;
+        }
+        return true;
+      });
+
+      // 行内标记：**x** / *x* / `x` —— 在输入闭合字符后替换
+      const INLINE_RULES = [
+        { re: /\*\*([^*]+)\*\*$/, fmt: 'bold', open: 2, close: 2 },
+        { re: /`([^`]+)`$/, fmt: 'code', open: 1, close: 1 },
+        { re: /(?:^|[^*])\*([^*\s][^*]*)\*$/, fmt: 'italic', open: 1, close: 1 },
+      ];
+      quill.on('text-change', (delta, _old, source) => {
+        if (source !== 'user') return;
+        const ins = delta.ops && delta.ops[delta.ops.length - 1];
+        // 仅在用户刚插入 1 个字符（* 或 `）时检查，降低开销
+        const last = ins && typeof ins.insert === 'string' ? ins.insert : '';
+        if (last !== '*' && last !== '`') return;
+        const sel = quill.getSelection();
+        if (!sel) return;
+        const [line, offset] = quill.getLine(sel.index);
+        if (!line) return;
+        const lineStart = sel.index - offset;
+        const text = quill.getText(lineStart, offset);
+        for (const rule of INLINE_RULES) {
+          const m = rule.re.exec(text);
+          if (m) {
+            const inner = m[1];
+            const matchStr = m[0].slice(m[0].length - (inner.length + rule.open + rule.close));
+            const start = lineStart + (text.length - matchStr.length);
+            setTimeout(() => {
+              quill.deleteText(start, matchStr.length, 'user');
+              quill.insertText(start, inner, { [rule.fmt]: true }, 'user');
+              // 光标移到格式片段之后，并清掉该格式，避免后续输入继续带格式
+              quill.setSelection(start + inner.length, 0, 'user');
+              quill.format(rule.fmt, false, 'user');
+            }, 0);
+            break;
+          }
+        }
       });
     }
 
