@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社区帖子｜Chris Li · AI Agent</title>
+<meta name="description" content="社区帖子 —— 用户发布的文章与笔记，可作为 AI 对话的参考来源。">
+<meta name="theme-color" content="#FAFAF9">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
+<link rel="stylesheet" href="tokens.css?v=20261001b">
+<link rel="stylesheet" href="agent.css?v=20261001b">
+<link rel="stylesheet" href="sidebar.css?v=20261001b">
+<link rel="stylesheet" href="catalog.css?v=20261001b">
+<link rel="stylesheet" href="posts.css?v=20261002a">
+</head>
+<body data-nav="posts" data-page="posts-list">
+
+<header class="bar">
+  <div class="left">
+    <a class="logo" href="index.html" aria-label="返回首页">CL</a>
+    <h1>社区帖子<small>Posts</small></h1>
+  </div>
+  <div class="actions">
+    <a class="iconbtn primary" href="post-edit.html"><i data-i="plus"></i><span class="hide-mobile">写文章</span></a>
+    <a class="iconbtn" href="agent.html"><i data-i="message"></i>返回对话</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow">Posts</span>
+      <h2>社区帖子</h2>
+      <p>社区成员发布的文章与笔记，点击阅读；也可在对话中作为参考来源。</p>
+    </div>
+    <span class="count" data-count></span>
+  </div>
+
+  <div data-posts></div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="icons.js?v=20261001b"></script>
+<script src="auth.js?v=20261001b"></script>
+<script src="sidebar.js?v=20261001b"></script>
+<script src="posts.js?v=20261002b"></script>
+</body>
+</html>

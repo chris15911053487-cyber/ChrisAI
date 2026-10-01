@@ -12,6 +12,9 @@
   let kbAll = [];          // 可用知识库
   let kbSel = [];          // 当前会话选择的知识库 ID
   let kbMax = 5;
+  let postCats = [];       // 可选的帖子分类（固定列表）
+  let postPub = {};        // 各分类已发布帖子数
+  let postSel = [];        // 会话帖子来源：[]=未启用；['*']=全部；['分类',...]=限定
   let modelAll = [];       // 可选对话模型
   let modelSel = null;     // 当前会话使用的模型 ID
   const MODEL_PREF = 'cl_model';
@@ -255,6 +258,7 @@
     if (busy) return;
     setSid(null); pendingUploads = []; renderAttach();
     kbSel = []; renderKb();
+    postSel = []; renderPost();
     modelSel = preferredModel(); renderModel();
     showWelcome(); loadSessions(); input.focus(); closeSide();
   }
@@ -266,6 +270,7 @@
     catch (e) { toast(e.message, true); newChat(); return; }
     sid = id; pendingUploads = []; renderAttach();
     kbSel = (data.session && data.session.kb_ids) || []; renderKb();
+    postSel = (data.session && data.session.post_cats) || []; renderPost();
     const sm = data.session && data.session.model_id;
     // 模型列表可能尚未加载完：先采用会话的模型，loadModels 完成后再校验
     modelSel = sm && (!modelAll.length || modelAll.some(m => m.id === sm)) ? sm : preferredModel(); renderModel();
@@ -375,6 +380,87 @@
   document.addEventListener('click', e => { if (!kbPop.hidden && !$('kbBar').contains(e.target)) toggleKbPop(false); });
   kbPop.addEventListener('keydown', e => { if (e.key === 'Escape') { toggleKbPop(false); kbToggle.focus(); } });
 
+  /* ---------------- 社区帖子来源选择 ---------------- */
+  const postToggle = $('postToggle'), postPop = $('postPop');
+  const postEnabled = () => postSel.length > 0;
+  const postAll = () => postSel.includes('*');
+
+  async function loadPostCats() {
+    try { const d = await api('/api/posts/categories'); postCats = d.categories || []; postPub = d.published || {}; }
+    catch { postCats = []; postPub = {}; }
+    renderPost();
+  }
+
+  function renderPost() {
+    const bar = $('kbBar');
+    bar.querySelectorAll('.post-chip').forEach(c => c.remove());
+    if (postEnabled()) {
+      const label = postAll() ? '全部帖子' : (postSel.length + ' 个分类');
+      const chip = el('span', 'kb-chip post-chip');
+      chip.title = postAll() ? '对话参考全部社区帖子' : ('对话参考：' + postSel.join('、'));
+      chip.innerHTML = icon('file');
+      chip.append(el('span', '', label));
+      const x = el('button'); x.type = 'button'; x.innerHTML = icon('x'); x.setAttribute('aria-label', '取消使用社区帖子');
+      x.addEventListener('click', () => setPostCats([]));
+      chip.append(x);
+      bar.insertBefore(chip, postPop);
+    }
+    postToggle.lastChild.textContent = postEnabled() ? '' : '社区帖子';
+    postToggle.title = postEnabled() ? '管理帖子来源' : '把社区帖子作为对话参考来源';
+    postToggle.setAttribute('aria-label', postToggle.title);
+    if (!postPop.hidden) renderPostPop();
+  }
+
+  function renderPostPop() {
+    postPop.replaceChildren();
+    const ph = el('div', 'ph', '选择要作为对话参考的社区帖子');
+    const manage = el('a', '', '浏览'); manage.href = 'posts.html';
+    ph.append(manage); postPop.append(ph);
+    if (!postCats.length) {
+      postPop.append(el('div', 'none', '暂无可用分类。'));
+      return;
+    }
+    // "全部帖子"选项
+    const allLab = el('label', 'kb-opt');
+    const allCb = el('input'); allCb.type = 'checkbox'; allCb.checked = postAll();
+    allCb.addEventListener('change', () => setPostCats(allCb.checked ? ['*'] : []));
+    const allInfo = el('div'); allInfo.append(el('div', 't', '全部帖子'),
+      el('div', 'm', '参考所有已发布的社区帖子'));
+    allLab.append(allCb, allInfo); postPop.append(allLab);
+    // 分类多选（选了"全部"时禁用，避免歧义）
+    for (const c of postCats) {
+      const lab = el('label', 'kb-opt');
+      const cb = el('input'); cb.type = 'checkbox';
+      cb.checked = !postAll() && postSel.includes(c);
+      cb.disabled = postAll();
+      cb.addEventListener('change', () => {
+        const base = postSel.filter(x => x !== '*');
+        setPostCats(cb.checked ? [...base, c] : base.filter(x => x !== c));
+      });
+      const info = el('div');
+      info.append(el('div', 't', c), el('div', 'm', (postPub[c] || 0) + ' 篇已发布'));
+      lab.append(cb, info); postPop.append(lab);
+    }
+  }
+
+  async function setPostCats(cats) {
+    const prev = postSel;
+    postSel = cats;
+    renderPost();
+    if (!sid) return; // 新会话：会话建立后由后端持久化（随首条消息创建会话后再设）
+    try { postSel = (await jsend('/api/sessions/' + sid + '/post-cats', {categories: postSel}, 'PUT')).post_cats; renderPost(); }
+    catch (e) { postSel = prev; renderPost(); toast(e.message, true); }
+  }
+
+  function togglePostPop(open) {
+    open = open != null ? open : postPop.hidden;
+    if (open) { renderPostPop(); loadPostCats(); }
+    togglePop(postPop, postToggle, open);
+  }
+  postToggle.addEventListener('click', e => { e.stopPropagation(); togglePostPop(); });
+  document.addEventListener('click', e => { if (!postPop.hidden && !$('kbBar').contains(e.target)) togglePostPop(false); });
+  postPop.addEventListener('keydown', e => { if (e.key === 'Escape') { togglePostPop(false); postToggle.focus(); } });
+
   /* ---------------- 模型选择 ---------------- */
   const modelToggle = $('modelToggle'), modelPop = $('modelPop');
   const curModel = () => modelAll.find(m => m.id === modelSel);
@@ -434,7 +520,7 @@
 
   function togglePop(pop, btn, open) {
     open = open != null ? open : pop.hidden;
-    for (const [p, b] of [[modelPop, modelToggle], [kbPop, kbToggle]]) {   // 同时只开一个
+    for (const [p, b] of [[modelPop, modelToggle], [kbPop, kbToggle], [postPop, postToggle]]) {   // 同时只开一个
       if (p !== pop && !p.hidden) { p.hidden = true; b.setAttribute('aria-expanded', 'false'); }
     }
     pop.hidden = !open;
@@ -540,7 +626,11 @@
   function handleEvent(ev, bot) {
     switch (ev.type) {
       case 'session':
-        if (ev.id !== sid) setSid(ev.id);
+        if (ev.id !== sid) {
+          setSid(ev.id);
+          // 新会话：把本地已选的帖子来源分类持久化到该会话
+          if (postSel.length) jsend('/api/sessions/' + ev.id + '/post-cats', {categories: postSel}, 'PUT').catch(() => {});
+        }
         if (ev.model && ev.model.id !== modelSel) {   // 所选模型已被停用，服务端改用了默认模型
           const was = curModel();
           modelSel = ev.model.id; loadModels();
@@ -631,6 +721,7 @@
       toast('已选择知识库「' + kb.name + '」，直接提问即可');
     }
   });
+  loadPostCats();
   const q = params.get('q');
   if (q) {
     input.value = q.slice(0, 2000); autosize();

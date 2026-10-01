@@ -25,7 +25,7 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, Uplo
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import agent, auth, config, db, embeddings, knowledge, llm, models, ratelimit, settings, skills, workspace
+from . import agent, auth, config, db, embeddings, knowledge, llm, models, posts, ratelimit, settings, skills, workspace
 from .ratelimit import QuotaError
 from .skills import SkillError
 from .tools import describe_call
@@ -145,6 +145,11 @@ async def _auth_err(_: Request, e: auth.AuthError):
     return JSONResponse({"detail": str(e)}, status_code=e.status)
 
 
+@app.exception_handler(posts.PostError)
+async def _post_err(_: Request, e: posts.PostError):
+    return JSONResponse({"detail": str(e)}, status_code=e.status)
+
+
 def visitor(request: Request) -> str:
     """数据归属 ID：登录用户为 "u_{uid}"，匿名访客为 32 位 hex vid。"""
     owner = request.state.owner
@@ -181,6 +186,17 @@ def write_limit(request: Request) -> None:
 def require_admin(x_admin_token: Optional[str] = Header(None)) -> None:
     if not config.ADMIN_TOKEN or not x_admin_token or not hmac.compare_digest(x_admin_token, config.ADMIN_TOKEN):
         raise HTTPException(401, "需要管理员令牌")
+
+
+def require_user(request: Request) -> tuple[str, str]:
+    """要求已登录。返回 (owner, author_name)。匿名访客 401。"""
+    uid = current_uid(request)
+    if uid is None:
+        raise HTTPException(401, "请先登录")
+    u = db.user_get(uid)
+    if not u:
+        raise HTTPException(401, "请先登录")
+    return auth.owner_of_user(uid), u["username"]
 
 
 # ---------------- 健康 ----------------
@@ -309,7 +325,8 @@ async def session_messages(sid: str, vid: str = Depends(visitor)):
         out.append(item)
     existing = {f["path"] for f in workspace.listing(sid)}
     m = models.resolve(s.get("model_id"))
-    s = {**s, "kb_ids": knowledge.resolve_selection(vid, s.get("kb_ids") or []), "model_id": m.id if m else None}
+    s = {**s, "kb_ids": knowledge.resolve_selection(vid, s.get("kb_ids") or []),
+         "model_id": m.id if m else None, "post_cats": s.get("post_cats") or []}
     return {"session": s, "messages": out, "existing_files": sorted(existing)}
 
 
@@ -323,6 +340,24 @@ async def set_session_kbs(sid: str, req: SessionKbReq, vid: str = Depends(visito
     ids = knowledge.resolve_selection(vid, req.kb_ids)
     db.set_session_kbs(sid, ids)
     return {"kb_ids": ids}
+
+
+class SessionPostCatsReq(BaseModel):
+    # 帖子来源选择：空列表 = 未启用帖子来源；["*"] = 启用且全部分类；
+    # ["分类A", ...] = 启用且限定这些分类。仅保留 "*" 与预设分类内的取值。
+    categories: list[str] = Field(default_factory=list, max_length=50)
+
+
+@app.put("/api/sessions/{sid}/post-cats")
+async def set_session_post_cats(sid: str, req: SessionPostCatsReq, vid: str = Depends(visitor)):
+    owned_session(sid, vid)
+    if "*" in req.categories:
+        cats = ["*"]
+    else:
+        cats = [c for c in req.categories if c in config.POST_CATEGORIES]
+    db.set_session_post_cats(sid, cats)
+    enabled = bool(cats)
+    return {"post_cats": cats, "enabled": enabled, "categories": posts.categories()}
 
 
 # ---------------- 文件 ----------------
@@ -919,6 +954,208 @@ async def admin_delete_kb(kid: str):
     if not knowledge.KID_RE.match(kid) or not db.kb_get(kid):
         raise HTTPException(404, "知识库不存在")
     knowledge.remove(kid)
+    return {"ok": True}
+
+
+# ---------------- 社区帖子 ----------------
+POST_ID_RE = re.compile(r"^[a-f0-9]{32}$")
+
+
+class PostIn(BaseModel):
+    title: str = Field(..., min_length=1, max_length=config.POST_TITLE_MAX)
+    body_md: str = Field(default="", max_length=config.POST_BODY_MAX_CHARS)
+    body_html: str = Field(default="", max_length=config.POST_HTML_MAX_CHARS)
+    category: str = Field(..., min_length=1, max_length=60)
+    tags: list[str] = Field(default_factory=list, max_length=config.POST_MAX_TAGS)
+
+
+class PostReviewReq(BaseModel):
+    approve: bool
+    reason: str = Field(default="", max_length=500)
+
+
+def _valid_pid(pid: str) -> str:
+    if not POST_ID_RE.match(pid or ""):
+        raise HTTPException(404, "帖子不存在")
+    return pid
+
+
+def _post_list_view(p: dict) -> dict:
+    """列表视图：不含正文。"""
+    out = {k: p.get(k) for k in ("id", "author_name", "title", "category", "tags",
+                                 "status", "created_at", "updated_at", "published_at")}
+    if "reject_reason" in p:
+        out["reject_reason"] = p["reject_reason"]
+    return out
+
+
+def _post_detail_view(p: dict, mine: bool) -> dict:
+    """详情视图：含正文。mine 为真时附带状态与驳回原因。"""
+    out = {k: p.get(k) for k in ("id", "author_name", "title", "body_md", "body_html", "category",
+                                 "tags", "published_at", "created_at", "updated_at")}
+    if mine:
+        out["status"] = p["status"]
+        out["reject_reason"] = p.get("reject_reason", "")
+        out["mine"] = True
+    return out
+
+
+# 公开：已发布帖子列表
+@app.get("/api/posts")
+async def list_posts(category: Optional[str] = None, limit: int = 50, offset: int = 0):
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    items = posts.list_published(category=category or None, limit=limit, offset=offset)
+    return {"posts": [_post_list_view(p) for p in items]}
+
+
+# 公开：固定分类 + 已发布分类计数
+@app.get("/api/posts/categories")
+async def post_categories():
+    return {"categories": posts.categories(),
+            "published": {r["category"]: r["n"] for r in posts.published_categories()}}
+
+
+# 作者：我的全部帖子（任意状态）
+@app.get("/api/posts/mine")
+async def my_posts(user: tuple[str, str] = Depends(require_user)):
+    owner, _ = user
+    return {"posts": [_post_list_view(p) for p in posts.list_mine(owner)]}
+
+
+# 作者：创建草稿
+@app.post("/api/posts")
+async def create_post(req: PostIn, request: Request, user: tuple[str, str] = Depends(require_user)):
+    write_limit(request)
+    owner, author_name = user
+    p = posts.create(owner, author_name, req.title.strip(), req.body_md, req.category.strip(), req.tags,
+                     body_html=req.body_html)
+    return _post_detail_view(p, mine=True)
+
+
+# 详情：已发布任何人可读；其他状态仅作者/管理员
+@app.get("/api/posts/{pid}")
+async def get_post(pid: str, request: Request):
+    _valid_pid(pid)
+    uid = current_uid(request)
+    owner = auth.owner_of_user(uid) if uid is not None else None
+    p = posts.get_readable(pid, owner)
+    return _post_detail_view(p, mine=bool(owner and p["owner"] == owner))
+
+
+# 作者：编辑（已发布的编辑后退回待审）
+@app.put("/api/posts/{pid}")
+async def update_post(pid: str, req: PostIn, request: Request, user: tuple[str, str] = Depends(require_user)):
+    write_limit(request)
+    _valid_pid(pid)
+    owner, _ = user
+    p = posts.update(pid, owner, req.title.strip(), req.body_md, req.category.strip(), req.tags,
+                     body_html=req.body_html)
+    return _post_detail_view(p, mine=True)
+
+
+# 作者：提交审核
+@app.post("/api/posts/{pid}/submit")
+async def submit_post(pid: str, request: Request, user: tuple[str, str] = Depends(require_user)):
+    write_limit(request)
+    _valid_pid(pid)
+    owner, _ = user
+    p = posts.submit(pid, owner)
+    return _post_detail_view(p, mine=True)
+
+
+# 作者/管理员：下架已发布帖子（退回草稿）
+@app.post("/api/posts/{pid}/unpublish")
+async def unpublish_post(pid: str, request: Request, user: tuple[str, str] = Depends(require_user)):
+    write_limit(request)
+    _valid_pid(pid)
+    owner, _ = user
+    p = posts.unpublish(pid, owner)
+    return _post_detail_view(p, mine=True)
+
+
+# 作者：删除
+@app.delete("/api/posts/{pid}")
+async def delete_post(pid: str, request: Request, user: tuple[str, str] = Depends(require_user)):
+    write_limit(request)
+    _valid_pid(pid)
+    owner, _ = user
+    posts.delete(pid, owner)
+    return {"ok": True}
+
+
+# ---- 帖子内嵌图片：登录用户上传到本地，详情/编辑经 /api/posts/images/ 读取 ----
+_POST_IMG_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
+_OWNER_RE = re.compile(r"^u_[a-zA-Z0-9]+$")
+_IMG_NAME_RE = re.compile(r"^[a-f0-9]{32}\.(?:png|jpg|gif|webp)$")
+
+
+@app.post("/api/posts/images")
+async def upload_post_image(request: Request, file: UploadFile = File(...),
+                            user: tuple[str, str] = Depends(require_user)):
+    write_limit(request)
+    owner, _ = user
+    if not _OWNER_RE.match(owner):
+        raise HTTPException(400, "无效的用户")
+    limit = config.POST_IMAGE_MAX_MB * 1024 * 1024
+    data = await file.read(limit + 1)
+    if len(data) > limit:
+        raise HTTPException(413, f"图片过大（上限 {config.POST_IMAGE_MAX_MB} MB）")
+    # 以魔数判定真实图片类型，不信任客户端 content-type / 扩展名
+    ext = _sniff_image(data)
+    if ext is None:
+        raise HTTPException(415, "仅支持 PNG / JPEG / GIF / WebP 图片")
+    name = secrets.token_hex(16) + ext
+    out_dir = config.POST_IMAGES_DIR / owner
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / name).write_bytes(data)
+    return {"url": f"/api/posts/images/{owner}/{name}"}
+
+
+@app.get("/api/posts/images/{owner}/{name}")
+async def get_post_image(owner: str, name: str):
+    if not _OWNER_RE.match(owner) or not _IMG_NAME_RE.match(name):
+        raise HTTPException(404, "图片不存在")
+    path = config.POST_IMAGES_DIR / owner / name  # 名称已严格白名单，无路径穿越风险
+    if not path.is_file():
+        raise HTTPException(404, "图片不存在")
+    return _download(path.read_bytes(), name)
+
+
+def _sniff_image(data: bytes) -> Optional[str]:
+    """按文件头魔数判定图片类型，返回扩展名；非受支持图片返回 None。"""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if data[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return ".gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
+# 管理员：待审列表
+@app.get("/api/admin/posts", dependencies=[Depends(require_admin)])
+async def admin_list_posts(status: str = "pending"):
+    if status not in (posts.DRAFT, posts.PENDING, posts.PUBLISHED, posts.REJECTED):
+        raise HTTPException(400, "status 取值无效")
+    return {"posts": [_post_list_view(p) for p in db.post_list_by_status(status)]}
+
+
+# 管理员：审核通过 / 驳回
+@app.post("/api/admin/posts/{pid}/review", dependencies=[Depends(require_admin)])
+async def admin_review_post(pid: str, req: PostReviewReq):
+    _valid_pid(pid)
+    p = posts.review(pid, approve=req.approve, reason=req.reason)
+    return _post_list_view(p)
+
+
+# 管理员：删除任意帖子
+@app.delete("/api/admin/posts/{pid}", dependencies=[Depends(require_admin)])
+async def admin_delete_post(pid: str):
+    _valid_pid(pid)
+    posts.delete(pid, owner=None, is_admin=True)
     return {"ok": True}
 
 

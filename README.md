@@ -14,6 +14,7 @@ Chris Li 的个人网站 + 企业级 AI Agent 平台。前端是一个静态展�
 - **技能（Skill）系统**：内置技能（`skill-creator`、`xlsx-builder`、`docx-report`），并支持访客创建、编辑、导入导出、复制自己的技能，管理员可审核发布为公共技能。
 - **安全沙箱执行**：技能脚本在独立的 Runner 容器中运行——无外网、无密钥、只读根文件系统、每任务独立 UID、内存/CPU/进程数受限。
 - **知识库**：上传 PDF / Word / Excel / PPT / Markdown 等文档，对话中选择知识库后 AI 先检索再回答并标注出处。检索为关键词（SQLite FTS5）+ 语义向量混合，RRF 融合后可选 reranker 重排；向量服务不可用时自动退回关键词检索。
+- **社区帖子**：登录用户发布文章 / 笔记（Markdown），先经管理员审核后公开；分类为管理员预设固定列表，标签自由填写。帖子可在对话中作为参考来源（关键词检索，与知识库并列、可按分类勾选）。正文渲染经 DOMPurify 净化，防止 XSS。
 - **会话持久化**：按匿名访客 cookie 隔离会话，数据存于 SQLite。
 - **文件工作区**：每会话独立工作区，支持文件上传/下载，带配额与 TTL 自动清理。
 - **多层限流与配额**：nginx 层 + 应用层（每 IP 每分钟、每访客每日轮数、全局每日 token 上限等）。
@@ -50,6 +51,8 @@ ChrisAI/
 │   │   ├── agent.py         # Agent 主循环与工具调用
 │   │   ├── llm.py           # DeepSeek 客户端
 │   │   ├── skills.py        # 技能管理
+│   │   ├── knowledge.py     # 知识库：解析/切片/检索
+│   │   ├── posts.py         # 社区帖子：状态机/审核/检索
 │   │   ├── tools.py         # 工具定义
 │   │   ├── workspace.py     # 会话工作区与文件
 │   │   ├── ratelimit.py     # 限流与配额
@@ -136,6 +139,9 @@ ChrisAI/
 | `WORKSPACE_QUOTA_MB` | 每会话工作区配额 | `100` |
 | `UPLOAD_MAX_MB` | 单文件上传上限 | `10` |
 | `FILE_TTL_DAYS` | 工作区文件保留天数 | `7` |
+| `POST_CATEGORIES` | 社区帖子固定分类（逗号分隔，管理员预设） | `AI 教程,实践笔记,行业观察,工具推荐,随笔` |
+| `POST_MAX_PER_USER` | 每用户帖子数上限 | `50` |
+| `POST_BODY_MAX_CHARS` | 帖子正文字符上限 | `100000` |
 
 ## API 概览
 
@@ -146,8 +152,9 @@ ChrisAI/
 | `/api/files` | 会话工作区文件下载 / 上传 |
 | `/api/skills` | 技能列表、查看、创建、编辑、删除、导入导出、复制 |
 | `/api/kb` | 知识库：创建、上传文档、查看片段、检索测试；`PUT /api/sessions/{id}/kbs` 为会话选择知识库 |
+| `/api/posts` | 社区帖子：列表、详情、创建、编辑、提交审核、我的帖子；`PUT /api/sessions/{id}/post-cats` 选择帖子来源分类 |
 | `/api/models` | 对话框可选的模型列表（不含地址与 Key） |
-| `/api/admin` | 管理员：模型配置、发布访客技能、公开知识库（需 `X-Admin-Token`） |
+| `/api/admin` | 管理员：模型配置、发布访客技能、公开知识库、审核帖子（需 `X-Admin-Token`） |
 
 ## 安全设计
 
@@ -156,6 +163,7 @@ ChrisAI/
 - **入站隔离**：`agent-api` 拒绝来自沙箱网络的入站请求（防止脚本回连）。
 - **限流**：nginx（`10r/s` API、`5r/m` 对话）+ 应用层多维配额。
 - **上传限制**：文件大小、技能文件数量与总大小均有上限。
+- **UGC 净化**：社区帖子正文为用户提交的 Markdown，渲染时经 DOMPurify 净化（净化库不可用时退回转义纯文本），防止 XSS。
 - `.env` 文件已在 `.gitignore` 中，不会被提交。
 
 ## 技术栈

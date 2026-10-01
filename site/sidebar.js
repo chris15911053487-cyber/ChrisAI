@@ -7,6 +7,7 @@
     { key: 'agent',   icon: 'message', text: '对话',   href: 'agent.html'   },
     { key: 'skills',  icon: 'layers',  text: '技能',   href: 'skills.html'  },
     { key: 'knowledge', icon: 'book',  text: '知识库', href: 'knowledge.html' },
+    { key: 'posts',   icon: 'file',    text: '帖子',   href: 'posts.html'   },
     { key: 'courses', icon: 'cap',     text: '课程',   href: 'courses.html' },
     { key: 'works',   icon: 'grid',    text: '作品',   href: 'works.html'   },
     { key: 'tools',   icon: 'wrench',  text: '工具',   href: 'tools.html'   },

@@ -134,6 +134,37 @@ CREATE VIRTUAL TABLE IF NOT EXISTS kb_fts USING fts5(tokens);
 CREATE TRIGGER IF NOT EXISTS kb_chunks_ad AFTER DELETE ON kb_chunks BEGIN
     DELETE FROM kb_fts WHERE rowid = old.id;
 END;
+-- 社区帖子：登录用户发帖，先审核后发布；关键词检索（FTS5），独立于知识库。
+CREATE TABLE IF NOT EXISTS posts (
+    id TEXT PRIMARY KEY,
+    owner TEXT NOT NULL,                 -- 作者 owner（u_{uid}）
+    author_name TEXT NOT NULL DEFAULT '',-- 冗余存用户名，列表展示免 join
+    title TEXT NOT NULL,
+    body_md TEXT NOT NULL DEFAULT '',    -- Markdown 原文（旧帖 / 检索纯文本兜底）
+    body_html TEXT NOT NULL DEFAULT '',  -- 富文本编辑器正文（已净化的 HTML；新帖优先用它渲染）
+    category TEXT NOT NULL DEFAULT '',   -- 单分类（管理员预设固定列表之一）
+    tags TEXT NOT NULL DEFAULT '[]',     -- JSON 数组，发帖时自由维护
+    status TEXT NOT NULL DEFAULT 'draft',-- draft | pending | published | rejected
+    reject_reason TEXT NOT NULL DEFAULT '',
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL,
+    published_at REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_posts_owner ON posts(owner, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_category ON posts(category, status);
+CREATE TABLE IF NOT EXISTS post_chunks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    seq INTEGER NOT NULL,
+    content TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_postchunk_post ON post_chunks(post_id, seq);
+-- 全文索引：tokens 为预分词结果（中文二元组 + 英文单词），rowid = post_chunks.id
+CREATE VIRTUAL TABLE IF NOT EXISTS post_fts USING fts5(tokens);
+CREATE TRIGGER IF NOT EXISTS post_chunks_ad AFTER DELETE ON post_chunks BEGIN
+    DELETE FROM post_fts WHERE rowid = old.id;
+END;
 """
 
 
@@ -159,6 +190,8 @@ def _migrate(c: sqlite3.Connection) -> None:
         c.execute("ALTER TABLE sessions ADD COLUMN kb_ids TEXT NOT NULL DEFAULT '[]'")
     if "model_id" not in cols:  # 会话使用的对话模型（空 = 默认模型）
         c.execute("ALTER TABLE sessions ADD COLUMN model_id TEXT NOT NULL DEFAULT ''")
+    if "post_cats" not in cols:  # 对话选中的帖子来源分类；'[]' = 全部分类
+        c.execute("ALTER TABLE sessions ADD COLUMN post_cats TEXT NOT NULL DEFAULT '[]'")
     cols = {r["name"] for r in c.execute("PRAGMA table_info(kb_chunks)").fetchall()}
     if "embedding" not in cols:  # float32 L2 归一化向量；embed_model 记录生成它的模型，换模型后自动重算
         c.execute("ALTER TABLE kb_chunks ADD COLUMN embedding BLOB")
@@ -167,6 +200,9 @@ def _migrate(c: sqlite3.Connection) -> None:
     cols = {r["name"] for r in c.execute("PRAGMA table_info(messages)").fetchall()}
     if "reasoning" not in cols:  # 思考模式的 reasoning_content（带工具调用时必须回传给模型）
         c.execute("ALTER TABLE messages ADD COLUMN reasoning TEXT")
+    cols = {r["name"] for r in c.execute("PRAGMA table_info(posts)").fetchall()}
+    if "body_html" not in cols:  # 富文本编辑器正文（已净化 HTML）；旧帖为空时回退 body_md 渲染
+        c.execute("ALTER TABLE posts ADD COLUMN body_html TEXT NOT NULL DEFAULT ''")
 
 
 def _exec(sql: str, args: tuple = ()) -> sqlite3.Cursor:
@@ -279,6 +315,11 @@ def _session_row(r: Optional[dict]) -> Optional[dict]:
         except ValueError:
             ids = []
         r["kb_ids"] = [x for x in ids if isinstance(x, str)] if isinstance(ids, list) else []
+        try:
+            cats = json.loads(r.get("post_cats") or "[]")
+        except ValueError:
+            cats = []
+        r["post_cats"] = [x for x in cats if isinstance(x, str)] if isinstance(cats, list) else []
     return r
 
 
@@ -296,6 +337,11 @@ def set_session_model(sid: str, model_id: str) -> None:
 
 def set_session_kbs(sid: str, kb_ids: list[str]) -> None:
     _exec("UPDATE sessions SET kb_ids=? WHERE id=?", (json.dumps(kb_ids), sid))
+
+
+def set_session_post_cats(sid: str, cats: list[str]) -> None:
+    """设置会话的帖子来源分类；空列表 = 全部分类。"""
+    _exec("UPDATE sessions SET post_cats=? WHERE id=?", (json.dumps(cats, ensure_ascii=False), sid))
 
 
 def list_sessions(vid: str, limit: int = 100) -> list[dict]:
@@ -647,9 +693,160 @@ def kb_chunks_by_ids(ids: list[int]) -> dict[int, dict]:
     return {r["id"]: r for r in rows}
 
 
+# ---------- 社区帖子 ----------
+_POST_LIST_COLS = ("id, owner, author_name, title, category, tags, status, "
+                   "created_at, updated_at, published_at")
+
+
+def _post_row(r: Optional[dict]) -> Optional[dict]:
+    if r is not None and "tags" in r:
+        try:
+            t = json.loads(r.get("tags") or "[]")
+        except ValueError:
+            t = []
+        r["tags"] = [x for x in t if isinstance(x, str)] if isinstance(t, list) else []
+    return r
+
+
+def post_create(owner: str, author_name: str, title: str, body_md: str,
+                category: str, tags: list[str], body_html: str = "") -> dict:
+    pid = uuid.uuid4().hex
+    now = time.time()
+    _exec(
+        "INSERT INTO posts(id, owner, author_name, title, body_md, body_html, category, tags, status, "
+        "created_at, updated_at) VALUES(?,?,?,?,?,?,?,?, 'draft', ?, ?)",
+        (pid, owner, author_name, title, body_md, body_html, category,
+         json.dumps(tags, ensure_ascii=False), now, now),
+    )
+    return post_get(pid)
+
+
+def post_get(pid: str) -> Optional[dict]:
+    return _post_row(_one("SELECT * FROM posts WHERE id=?", (pid,)))
+
+
+def post_list_published(category: Optional[str] = None, categories: Optional[list[str]] = None,
+                        limit: int = 100, offset: int = 0) -> list[dict]:
+    """公开已发布帖子列表（列表字段，不含正文）。category 单选过滤，categories 多选过滤。"""
+    conds, args = ["status='published'"], []
+    if category:
+        conds.append("category=?")
+        args.append(category)
+    if categories:
+        q = ",".join("?" * len(categories))
+        conds.append(f"category IN ({q})")
+        args.extend(categories)
+    sql = (f"SELECT {_POST_LIST_COLS} FROM posts WHERE " + " AND ".join(conds)
+           + " ORDER BY published_at DESC, updated_at DESC LIMIT ? OFFSET ?")
+    args.extend([limit, offset])
+    return [_post_row(r) for r in _all(sql, tuple(args))]
+
+
+def post_list_by_owner(owner: str, limit: int = 200) -> list[dict]:
+    """作者本人的全部帖子（任意状态）。"""
+    return [_post_row(r) for r in _all(
+        f"SELECT {_POST_LIST_COLS}, reject_reason FROM posts WHERE owner=? "
+        "ORDER BY updated_at DESC LIMIT ?",
+        (owner, limit),
+    )]
+
+
+def post_list_by_status(status: str, limit: int = 200) -> list[dict]:
+    """按状态列出（管理员审核用，如 status='pending'）。"""
+    return [_post_row(r) for r in _all(
+        f"SELECT {_POST_LIST_COLS} FROM posts WHERE status=? ORDER BY updated_at ASC LIMIT ?",
+        (status, limit),
+    )]
+
+
+def post_update_fields(pid: str, fields: dict) -> Optional[dict]:
+    """更新帖子字段（title/body_md/body_html/category/tags/status/reject_reason/published_at）。
+    tags 以 list 传入会自动序列化。总是刷新 updated_at。"""
+    allowed = ("title", "body_md", "body_html", "category", "tags", "status", "reject_reason", "published_at")
+    sets, args = [], []
+    for k in allowed:
+        if k in fields:
+            v = fields[k]
+            if k == "tags" and isinstance(v, list):
+                v = json.dumps(v, ensure_ascii=False)
+            sets.append(f"{k}=?")
+            args.append(v)
+    if not sets:
+        return post_get(pid)
+    sets.append("updated_at=?")
+    args += [time.time(), pid]
+    _exec(f"UPDATE posts SET {', '.join(sets)} WHERE id=?", tuple(args))
+    return post_get(pid)
+
+
+def post_delete(pid: str) -> None:
+    _exec("DELETE FROM posts WHERE id=?", (pid,))
+
+
+def post_count_owned(owner: str) -> int:
+    return _one("SELECT COUNT(*) n FROM posts WHERE owner=?", (owner,))["n"]
+
+
+def post_clear_index(pid: str) -> None:
+    """删除帖子的检索切片（级联触发 post_fts 清理）。重建索引前调用。"""
+    _exec("DELETE FROM post_chunks WHERE post_id=?", (pid,))
+
+
+def post_index(pid: str, chunks: list[tuple[str, str]]) -> None:
+    """为帖子重建关键词索引。chunks: [(content, tokens)]。先清旧切片再写入，事务内完成。"""
+    with _lock:
+        c = conn()
+        c.execute("BEGIN")
+        try:
+            c.execute("DELETE FROM post_chunks WHERE post_id=?", (pid,))
+            for seq, (content, tokens) in enumerate(chunks):
+                cur = c.execute("INSERT INTO post_chunks(post_id, seq, content) VALUES(?,?,?)",
+                                (pid, seq, content))
+                c.execute("INSERT INTO post_fts(rowid, tokens) VALUES(?,?)", (cur.lastrowid, tokens))
+            c.execute("COMMIT")
+        except BaseException:
+            c.execute("ROLLBACK")
+            raise
+
+
+def post_search(match: str, categories: Optional[list[str]], limit: int) -> list[dict]:
+    """在已发布帖子中做 FTS5 BM25 检索。match 为已构造的 FTS 表达式；
+    categories 为空/None 表示全部分类。返回片段及所属帖子的标题/分类。"""
+    if not match:
+        return []
+    conds, args = ["post_fts MATCH ?", "p.status='published'"], [match]
+    if categories:
+        q = ",".join("?" * len(categories))
+        conds.append(f"p.category IN ({q})")
+        args.extend(categories)
+    args.append(limit)
+    return _all(
+        "SELECT ch.id, ch.post_id, ch.seq, ch.content, p.title, p.category, p.author_name, "
+        "bm25(post_fts) AS score FROM post_fts "
+        "JOIN post_chunks ch ON ch.id = post_fts.rowid "
+        "JOIN posts p ON p.id = ch.post_id "
+        f"WHERE {' AND '.join(conds)} ORDER BY score LIMIT ?",
+        tuple(args),
+    )
+
+
+def post_chunks_range(pid: str, start: int, count: int) -> list[dict]:
+    return _all(
+        "SELECT seq, content FROM post_chunks WHERE post_id=? AND seq>=? ORDER BY seq LIMIT ?",
+        (pid, start, count),
+    )
+
+
+def post_published_categories() -> list[dict]:
+    """已发布帖子的分类及计数（供前端筛选）。"""
+    return _all(
+        "SELECT category, COUNT(*) n FROM posts WHERE status='published' AND category!='' "
+        "GROUP BY category ORDER BY n DESC, category",
+    )
+
+
 # ---------- 运行时设置 ----------
-def settings_all() -> dict[str, str]:
-    return {r["key"]: r["value"] for r in _all("SELECT key, value FROM settings")}
+def settings_all() -> dict[str, str]:    return {r["key"]: r["value"] for r in _all("SELECT key, value FROM settings")}
 
 
 def settings_set(key: str, value: str) -> None:

@@ -1,0 +1,88 @@
+/* 社区帖子页样式 —— 依赖 tokens.css + agent.css + catalog.css */
+
+/* 空状态图标统一 */
+.empty-state .es-ic{width:30px;height:30px;color:var(--text-3);margin-bottom:12px}
+.empty-state .es-ic .i{width:30px;height:30px}
+.empty-state h3{margin:0 0 6px;font-size:16px;font-weight:600}
+.empty-state p{margin:0 0 14px;color:var(--text-2);font-size:13.5px;line-height:1.6;max-width:360px}
+
+/* 状态徽章 */
+.st-badge{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:var(--r-full);font:500 11.5px/1 var(--sans);white-space:nowrap;border:1px solid var(--line)}
+.st-badge.draft{background:var(--bg);color:var(--text-3)}
+.st-badge.pending{background:#FEFCE8;color:#A16207;border-color:rgba(161,98,7,.2)}
+.st-badge.published{background:var(--ok-soft);color:var(--ok);border-color:rgba(21,128,61,.2)}
+.st-badge.rejected{background:#FEF2F2;color:#B91C1C;border-color:rgba(185,28,28,.2)}
+
+/* ---------------- 详情页 ---------------- */
+.wrap-article{width:min(760px,calc(100% - 40px))}
+.post-head{padding-bottom:18px;margin-bottom:22px;border-bottom:1px solid var(--line)}
+.post-head h1{margin:0;font-size:30px;font-weight:650;letter-spacing:-.02em;line-height:1.25}
+.post-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;font:12.5px/1 var(--mono);color:var(--text-3)}
+.post-meta .cat-sm{font-family:var(--sans);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--text-2)}
+.post-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.tagchip{font:12px/1 var(--mono);color:var(--text-2);background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-full);padding:5px 10px}
+.post-ops{margin-top:16px;display:flex;gap:8px}
+.reject-note{margin-top:14px;font-size:13px;color:#B91C1C;background:#FEF2F2;border:1px solid rgba(185,28,28,.2);border-radius:10px;padding:10px 12px}
+
+/* ---------------- Markdown 正文 ---------------- */
+.md{color:var(--text);font-size:15.5px;line-height:1.8}
+.md > *:first-child{margin-top:0}
+.md h1,.md h2,.md h3,.md h4{margin:1.6em 0 .6em;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.md h1{font-size:24px}.md h2{font-size:20px}.md h3{font-size:17px}.md h4{font-size:15px}
+.md p{margin:0 0 1.1em}
+.md ul,.md ol{margin:0 0 1.1em;padding-left:1.5em}
+.md li{margin:.3em 0}
+.md a{color:var(--accent);text-underline-offset:3px}
+.md blockquote{margin:0 0 1.1em;padding:4px 16px;border-left:3px solid var(--line-2);color:var(--text-2)}
+.md code{font:13px/1.6 var(--mono);background:var(--bg-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.md pre{margin:0 0 1.1em;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto}
+.md pre code{background:none;border:none;padding:0;font-size:13px}
+.md img{max-width:100%;height:auto;border-radius:10px}
+.md table{border-collapse:collapse;margin:0 0 1.1em;width:100%;font-size:14px}
+.md th,.md td{border:1px solid var(--line);padding:7px 11px;text-align:left}
+.md th{background:var(--bg-2)}
+.md hr{border:none;border-top:1px solid var(--line);margin:1.8em 0}
+.md-plain{white-space:pre-wrap;word-break:break-word;font:14px/1.7 var(--mono);background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;color:var(--text-2)}
+.more-wrap{display:flex;justify-content:center;margin-top:28px}
+.more-wrap .iconbtn{min-width:140px;justify-content:center}
+
+/* ---------------- 编辑器 + 我的帖子 ---------------- */
+.edit-layout{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+.editor{display:flex;flex-direction:column;gap:14px;min-width:0}
+.ed-row{display:flex;gap:12px}
+.ed-row2{flex-wrap:wrap}
+.ed-title{flex:1;height:46px;font-size:19px;font-weight:600;border:1px solid var(--line-2);border-radius:10px;padding:0 14px;background:var(--surface);color:var(--text)}
+.ed-row2 .sel{flex:0 0 180px}
+.ed-row2 .sel select{width:100%;height:40px}
+.ed-tags{flex:1;min-width:200px;height:40px;border:1px solid var(--line-2);border-radius:10px;padding:0 12px;background:var(--surface);color:var(--text);font:14px/1 var(--sans)}
+.ed-title:focus,.ed-tags:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.ed-cols{display:block;min-height:420px}
+.ed-quill-wrap{border:1px solid var(--line-2);border-radius:12px;overflow:hidden;background:var(--surface)}
+.ed-quill-wrap .ql-toolbar{border:none;border-bottom:1px solid var(--line);background:var(--bg-2)}
+.ed-quill-wrap .ql-container{border:none;font:15px/1.75 var(--sans);min-height:420px}
+.ed-quill-wrap .ql-editor{min-height:420px;max-height:620px;overflow:auto;color:var(--text)}
+.ed-quill-wrap .ql-editor.ql-blank::before{color:var(--text-3);font-style:normal}
+.ed-quill-wrap .ql-editor img{max-width:100%;height:auto;border-radius:8px}
+.post-body.ql-editor{padding:0}
+.post-body img{max-width:100%;height:auto;border-radius:8px}
+.ed-err{color:var(--err);font-size:13px;min-height:1em}
+.ed-actions{display:flex;align-items:center;gap:10px}
+.ed-actions .spacer{flex:1}
+
+/* 我的帖子 */
+.mine-list{position:sticky;top:84px;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--bg-2);padding:16px;max-height:calc(100vh - 108px);overflow:auto}
+.mine-title{font:600 13px/1 var(--sans);margin-bottom:12px}
+.mine-list .empty{color:var(--text-3);font-size:13px;line-height:1.6;padding:6px 0}
+.mine-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.mine-info{flex:1;min-width:0}
+.mine-link{display:block;font-size:13.5px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.mine-link:hover{color:var(--accent)}
+.mine-info .st-badge{margin-top:6px}
+.mine-reason{font-size:11.5px;color:#B91C1C;margin-top:5px;line-height:1.5}
+.iconbtn.sq{width:30px;height:30px;padding:0;justify-content:center;flex:none}
+
+@media(max-width:900px){
+  .edit-layout{grid-template-columns:1fr}
+  .ed-cols{grid-template-columns:1fr}
+  .mine-list{position:static;max-height:none}
+}

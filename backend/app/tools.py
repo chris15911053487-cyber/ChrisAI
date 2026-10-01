@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import httpx
 
-from . import config, knowledge, skills, workspace
+from . import config, db, knowledge, posts, skills, workspace
 from .skills import SkillError
 
 logger = logging.getLogger("agent.tools")
@@ -84,9 +84,31 @@ KB_TOOLS: list[dict] = [
 ]
 
 
-def tools_for(kb_ids: list[str]) -> list[dict]:
-    return TOOLS + KB_TOOLS if kb_ids else TOOLS
+# 仅在当前会话启用了"社区帖子"来源时提供给模型
+POST_TOOLS: list[dict] = [
+    _fn("search_posts",
+        "在社区帖子中检索（关键词），返回最相关的若干片段（含帖子 ID、标题、分类、作者）。"
+        "帖子是站内用户发布的文章/笔记。query 可以是完整问题或关键词；结果不理想时换个说法再检索。",
+        {"query": {"type": "string", "description": "检索关键词或问题"},
+         "top_k": {"type": "integer", "description": "返回片段数，默认 8，最多 12"}},
+        ["query"]),
+    _fn("read_post",
+        "按顺序读取某篇帖子的连续片段，用于查看检索命中片段的上下文。",
+        {"post_id": {"type": "string", "description": "search_posts 返回的帖子 ID"},
+         "start": {"type": "integer", "description": "起始片段序号（从 0 开始）"},
+         "count": {"type": "integer", "description": "读取片段数，默认 3，最多 8"}},
+        ["post_id"]),
+]
 
+
+def tools_for(kb_ids: list[str], post_on: bool = False) -> list[dict]:
+    """按会话启用的来源拼装工具集。post_on=True 时追加帖子检索工具。"""
+    out = list(TOOLS)
+    if kb_ids:
+        out += KB_TOOLS
+    if post_on:
+        out += POST_TOOLS
+    return out
 
 @dataclass
 class ToolResult:
@@ -182,7 +204,9 @@ async def _run_in_sandbox(sid: str, entry: dict, args: list, stdin: str, skill_f
     )
 
 
-async def execute(name: str, raw_args: str, vid: str, sid: str, kb_ids: Optional[list[str]] = None) -> ToolResult:
+async def execute(name: str, raw_args: str, vid: str, sid: str,
+                  kb_ids: Optional[list[str]] = None,
+                  post_cats: Optional[list[str]] = None) -> ToolResult:
     try:
         args = json.loads(raw_args or "{}")
         if not isinstance(args, dict):
@@ -192,6 +216,8 @@ async def execute(name: str, raw_args: str, vid: str, sid: str, kb_ids: Optional
     try:
         if name in ("search_knowledge", "read_knowledge"):
             return await _dispatch_kb(name, args, kb_ids or [])
+        if name in ("search_posts", "read_post"):
+            return await _dispatch_posts(name, args, post_cats)
         return await _dispatch(name, args, vid, sid)
     except SkillError as e:
         return ToolResult(f"错误：{e}", ok=False, summary=str(e))
@@ -242,6 +268,55 @@ async def _dispatch_kb(name: str, a: dict, kb_ids: list[str]) -> ToolResult:
         _clip(text, config.TOOL_RESULT_MAX_CHARS),
         summary=f"读取 {doc['filename']} 片段 #{first}–#{last}",
         detail={"hits": [{"file": doc["filename"], "seq": r["seq"], "snippet": r["content"][:300]} for r in rows]},
+    )
+
+
+async def _dispatch_posts(name: str, a: dict, post_cats: Optional[list[str]]) -> ToolResult:
+    """帖子检索/阅读。post_cats 为 None 表示全部分类；列表则限定这些分类。"""
+    scope = "全部分类" if not post_cats else "、".join(post_cats)
+    if name == "search_posts":
+        query = str(a.get("query", "")).strip()[:500]
+        if not query:
+            raise SkillError("query 不能为空")
+        top_k = max(1, min(_int_arg(a.get("top_k"), config.POST_SEARCH_LIMIT), 12))
+        hits = posts.search(query, categories=post_cats, limit=top_k)
+        if not hits:
+            return ToolResult(
+                f"没有检索到与「{query}」相关的帖子（范围：{scope}）。可换个关键词再试；仍无结果则如实告诉用户社区帖子中没有相关内容。",
+                summary=f"检索帖子「{query}」：无结果", detail={"query": query, "hits": []})
+        blocks = [
+            f"[{i}] 帖子：{h['title']}｜分类：{h['category']}｜作者：{h['author_name']}｜post_id={h['post_id']}｜片段 #{h['seq']}\n{h['content']}"
+            for i, h in enumerate(hits, 1)
+        ]
+        text = _clip("\n\n".join(blocks), config.TOOL_RESULT_MAX_CHARS)
+        return ToolResult(
+            text,
+            summary=f"检索帖子「{query}」：{len(hits)} 条结果",
+            detail={"query": query, "hits": [
+                {"title": h["title"], "category": h["category"], "seq": h["seq"], "snippet": h["content"][:300]}
+                for h in hits
+            ]},
+        )
+
+    # read_post
+    pid = str(a.get("post_id", "")).strip()
+    try:
+        post = posts.get_readable(pid, owner=None)  # 已发布帖子任何人可读
+    except posts.PostError:
+        return ToolResult("找不到该帖子（可能未发布或已删除）。请改用 search_posts 重新检索。",
+                          ok=False, summary="帖子不存在")
+    seq = max(0, _int_arg(a.get("start"), 0))
+    count = max(1, min(_int_arg(a.get("count"), 3), 8))
+    rows = db.post_chunks_range(pid, seq, count)
+    if not rows:
+        return ToolResult(f"帖子《{post['title']}》没有更多片段。", summary=f"读取帖子《{post['title']}》：无更多内容")
+    text = f"帖子：{post['title']}（分类 {post['category']}｜作者 {post['author_name']}）\n\n" + \
+           "\n\n".join(f"[片段 #{r['seq']}]\n{r['content']}" for r in rows)
+    first, last = rows[0]["seq"], rows[-1]["seq"]
+    return ToolResult(
+        _clip(text, config.TOOL_RESULT_MAX_CHARS),
+        summary=f"读取帖子《{post['title']}》片段 #{first}–#{last}",
+        detail={"hits": [{"title": post["title"], "seq": r["seq"], "snippet": r["content"][:300]} for r in rows]},
     )
 
 
@@ -333,4 +408,6 @@ def describe_call(name: str, raw_args: str) -> str:
         "update_skill": lambda: f"更新技能 {a.get('name', '')}",
         "search_knowledge": lambda: f"检索知识库：{str(a.get('query', ''))[:60]}",
         "read_knowledge": lambda: "阅读知识库文档",
+        "search_posts": lambda: f"检索社区帖子：{str(a.get('query', ''))[:60]}",
+        "read_post": lambda: "阅读社区帖子",
     }.get(name, lambda: name)()

@@ -95,6 +95,22 @@ KB_CHUNK_CHARS = _int("KB_CHUNK_CHARS", 600)               # 切片长度
 KB_CHUNK_OVERLAP = _int("KB_CHUNK_OVERLAP", 80)            # 长段落切分重叠
 KB_MAX_PER_SESSION = _int("KB_MAX_PER_SESSION", 5)         # 单会话可同时选择的知识库数
 
+# ---- 社区帖子 ----
+# 固定分类列表（管理员预设）；逗号分隔，可用环境变量覆盖。标签由作者自由填写。
+POST_CATEGORIES = tuple(
+    c.strip() for c in os.getenv("POST_CATEGORIES", "AI 教程,实践笔记,行业观察,工具推荐,随笔").split(",")
+    if c.strip()
+)
+POST_MAX_PER_USER = _int("POST_MAX_PER_USER", 50)          # 每用户帖子数上限
+POST_TITLE_MAX = _int("POST_TITLE_MAX", 120)               # 标题字符上限
+POST_BODY_MAX_CHARS = _int("POST_BODY_MAX_CHARS", 100_000) # 正文字符上限
+POST_HTML_MAX_CHARS = _int("POST_HTML_MAX_CHARS", 500_000) # 富文本 HTML 字符上限（含标签，故更宽松）
+POST_IMAGE_MAX_MB = _int("POST_IMAGE_MAX_MB", 5)           # 帖子内嵌图片单张上限
+POST_IMAGES_DIR = DATA_DIR / "post_images"                 # 帖子图片存储目录
+POST_MAX_TAGS = _int("POST_MAX_TAGS", 8)                   # 每帖标签数上限
+POST_TAG_MAX = _int("POST_TAG_MAX", 20)                    # 单标签字符上限
+POST_SEARCH_LIMIT = _int("POST_SEARCH_LIMIT", 8)           # 对话检索返回的帖子片段数
+
 # ---- 向量检索 / 重排（OpenAI 兼容接口，如硅基流动、阿里云百炼、自托管 TEI；不配置则只用关键词检索） ----
 EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "https://api.siliconflow.cn/v1").rstrip("/")
 EMBEDDING_API_KEY = os.getenv("EMBEDDING_API_KEY", "")

@@ -73,7 +73,7 @@ dialog .fieldhint{font-size:12px;line-height:1.55;color:var(--text-3);margin-top
 <header class="bar">
   <div class="left">
     <a class="logo" href="index.html" aria-label="返回首页">CL</a>
-    <h1>后台管理<small>卡片 · 用户</small></h1>
+    <h1>后台管理<small>卡片 · 用户 · 帖子</small></h1>
   </div>
   <div class="actions">
     <a class="iconbtn ghost" href="index.html"><i data-i="arrow-left"></i>返回站点</a>
@@ -241,8 +241,78 @@ dialog .fieldhint{font-size:12px;line-height:1.55;color:var(--text-3);margin-top
       panel.append(wrap);
     }
     await renderUsers(panel);
+    await renderPosts(panel);
   }
 
+  /* ---------- 帖子审核 ---------- */
+  const POST_STATUS = { draft: '草稿', pending: '待审核', published: '已发布', rejected: '已驳回' };
+  const fmtDay = ts => ts ? new Date(ts * 1000).toLocaleDateString('zh-CN') : '—';
+
+  async function renderPosts(panel) {
+    let data;
+    try { data = await api('/api/admin/posts?status=pending'); }
+    catch (e) { if (e.auth) return showLogin('令牌无效'); return toast(e.message, true); }
+    const list = data.posts || [];
+
+    const wrap = el('div', 'section');
+    const head = el('div', 'section-head');
+    const h = el('h3'); h.innerHTML = icon('file'); h.append(el('span', null, '帖子审核'));
+    const right = el('div', 'sh-right');
+    right.append(el('span', 'count', list.length + ' 篇待审核'));
+    head.append(h, right);
+    wrap.append(head);
+
+    const tbl = el('div', 'tbl');
+    const hr = el('div', 'trow');
+    hr.className = 'trow head';
+    hr.append(el('div', 'c-ic', ''), el('div', 'c-title', '标题 / 作者'), el('div', 'c-desc', '分类 · 标签'),
+              el('div', 'c-flags', '提交时间'), el('div', 'c-ops', ''));
+    tbl.append(hr);
+    if (!list.length) tbl.append(el('div', 'empty', '没有待审核的帖子'));
+    for (const p of list) tbl.append(postRow(p));
+    wrap.append(tbl);
+    panel.append(wrap);
+  }
+
+  function postRow(p) {
+    const row = el('div', 'trow');
+    const ic = el('div', 'c-ic'); ic.innerHTML = icon('file'); row.append(ic);
+
+    const t = el('div', 'c-title');
+    const link = el('a', null, p.title || '(无标题)');
+    link.href = 'post-view.html?id=' + p.id; link.target = '_blank'; link.rel = 'noopener';
+    link.style.cssText = 'color:inherit;text-decoration:none';
+    t.append(link);
+    t.append(el('small', null, '作者 ' + (p.author_name || '匿名')));
+    row.append(t);
+
+    row.append(el('div', 'c-desc', (p.category || '未分类') + (p.tags && p.tags.length ? ' · ' + p.tags.join('、') : '')));
+    row.append(el('div', 'c-flags', fmtDay(p.updated_at)));
+
+    const ops = el('div', 'c-ops');
+    const review = async (approve, reason) => {
+      try { await jsend('/api/admin/posts/' + p.id + '/review', { approve, reason: reason || '' }, 'POST'); toast(approve ? '已通过发布' : '已驳回'); renderPanel(); }
+      catch (e) { toast(e.auth ? '令牌无效，请重新登录' : e.message, true); }
+    };
+    const view = el('a', 'iconbtn', '预览'); view.href = 'post-view.html?id=' + p.id; view.target = '_blank'; view.rel = 'noopener';
+    const pass = el('button', 'iconbtn primary', '通过');
+    pass.addEventListener('click', () => { if (confirm('确定通过并发布《' + (p.title || '') + '》？')) review(true); });
+    const reject = el('button', 'iconbtn', '驳回');
+    reject.addEventListener('click', () => {
+      const r = prompt('驳回原因（可留空）：', '');
+      if (r === null) return;
+      review(false, r.trim());
+    });
+    const del = el('button', 'iconbtn danger', '删除');
+    del.addEventListener('click', async () => {
+      if (!confirm('确定删除《' + (p.title || '') + '》？此操作不可恢复。')) return;
+      try { await api('/api/admin/posts/' + p.id, { method: 'DELETE' }); toast('已删除'); renderPanel(); }
+      catch (e) { toast(e.auth ? '令牌无效' : e.message, true); }
+    });
+    ops.append(view, pass, reject, del);
+    row.append(ops);
+    return row;
+  }
   /* ---------- 用户管理 ---------- */
   const fmtTime = ts => {
     if (!ts) return '—';
