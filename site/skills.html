@@ -7,9 +7,9 @@
 <meta name="description" content="查看、创建、编辑、导入导出 AI Agent 技能（Skills）。">
 <meta name="theme-color" content="#FAFAF9">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
-<link rel="stylesheet" href="tokens.css?v=20260930e">
-<link rel="stylesheet" href="agent.css?v=20260930e">
-<link rel="stylesheet" href="sidebar.css?v=20260930e">
+<link rel="stylesheet" href="tokens.css?v=20261001b">
+<link rel="stylesheet" href="agent.css?v=20261001b">
+<link rel="stylesheet" href="sidebar.css?v=20261001b">
 <style>
 body{overflow:auto;display:block}
 .bar{position:sticky;top:0}
@@ -46,9 +46,14 @@ main.card{padding:24px;min-width:0}
 .ed{display:grid;grid-template-columns:210px 1fr;gap:16px;min-height:420px}
 .files-nav{border-right:1px solid var(--line);padding-right:12px;display:flex;flex-direction:column;gap:2px}
 .files-title{font:500 11px/1 var(--mono);color:var(--text-3);letter-spacing:.06em;text-transform:uppercase;padding:2px 4px 8px}
-.files-dir{font:11px/1 var(--mono);color:var(--text-3);padding:10px 4px 4px;word-break:break-all}
+/* 树形结构 */
+.tree-root{font:500 12px/1 var(--mono);color:var(--text-2);padding:6px 4px 8px;word-break:break-all;display:flex;align-items:center;gap:6px}
+.tree-root .i{width:14px;height:14px;color:var(--text-3)}
+.tree-dir{display:flex;align-items:center;gap:0;font:11.5px/1 var(--mono);color:var(--text-3);padding:9px 9px 4px}
+.tree-dir .tree-guide{color:var(--line-2)}
+.tree-dir .tree-dname{color:var(--text-2);word-break:break-all}
+.tree-guide{flex:none;white-space:pre;font:12.5px/1.3 var(--mono);color:var(--line-2);user-select:none;margin-right:2px}
 .fitem{display:flex;align-items:center;gap:10px;text-align:left;background:none;border:1px solid transparent;border-radius:9px;padding:8px 9px;cursor:pointer;transition:background .15s,border-color .15s}
-.fitem.nested{margin-left:8px}
 .fitem:hover{background:rgba(10,10,10,.04)}
 .fitem.active{background:var(--surface);border-color:var(--line);box-shadow:var(--sh-1)}
 .fkind{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font:700 9.5px/1 var(--mono);letter-spacing:.02em;border:1px solid var(--line)}
@@ -171,8 +176,9 @@ main.card{padding:24px;min-width:0}
 
 <script src="vendor/marked-14.1.4.umd.js"></script>
 <script src="vendor/purify-3.2.3.min.js"></script>
-<script src="icons.js?v=20260930e"></script>
-<script src="sidebar.js?v=20260930e"></script>
+<script src="icons.js?v=20261001b"></script>
+<script src="auth.js?v=20261001b"></script>
+<script src="sidebar.js?v=20261001b"></script>
 <script>
 (() => {
   'use strict';
@@ -350,28 +356,11 @@ main.card{padding:24px;min-width:0}
 
     const ed = el('div', 'ed');
     const nav = el('div', 'files-nav');
-    const paths = Object.keys(current.files).filter(p => !current.deleted.has(p)).sort((a, b) => (a === 'SKILL.md' ? -1 : b === 'SKILL.md' ? 1 : a.localeCompare(b)));
-    nav.append(el('div', 'files-title', '文件 · ' + paths.length));
-    let curDir = null;
-    for (const p of paths) {
-      const dir = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
-      if (dir !== curDir) { curDir = dir; if (dir) nav.append(el('div', 'files-dir', dir + '/')); }
-      const f = current.files[p];
-      const dirty = (f.text && f.content !== f.orig) || current.added.has(p);
-      const b = el('button', 'fitem' + (p === current.active ? ' active' : '') + (dirty ? ' dirty' : '') + (dir ? ' nested' : ''));
-      const [kind, ext] = fileKind(p);
-      const fi = el('span', 'fkind k-' + kind); fi.textContent = ext;
-      const meta = el('span', 'fmeta');
-      meta.append(el('span', 'fname', p.slice(p.lastIndexOf('/') + 1)));
-      const sub = el('span', 'fsub');
-      if (f.text && f.content != null) { const lines = f.content ? f.content.split('\n').length : 0; sub.textContent = lines + ' 行'; }
-      else sub.textContent = fmt(f.size);
-      meta.append(sub);
-      b.append(fi, meta);
-      if (dirty) b.append(el('span', 'fdot'));
-      b.addEventListener('click', async () => { current.active = p; try { await ensureContent(p); } catch (e) { toast(e.message, true); } renderDetail(); });
-      nav.append(b);
-    }
+    const paths = Object.keys(current.files).filter(p => !current.deleted.has(p));
+    // 以技能名为根，显示文件树
+    const root = el('div', 'tree-root'); root.innerHTML = icon('folder'); root.append(meta.name + '/');
+    nav.append(root);
+    renderTree(nav, buildTree(paths));
 
     const editor = el('div', 'editor');
     const f = current.files[current.active];
@@ -449,6 +438,63 @@ main.card{padding:24px;min-width:0}
   }
 
   const fmt = n => n < 1024 ? n + ' B' : (n / 1024).toFixed(1) + ' KB';
+
+  // 从文件路径列表构建嵌套树：{name, path?, dirs:Map, files:[]}
+  function buildTree(paths) {
+    const root = {dirs: new Map(), files: []};
+    for (const p of paths) {
+      const parts = p.split('/');
+      let node = root;
+      for (let i = 0; i < parts.length - 1; i++) {
+        const seg = parts[i];
+        if (!node.dirs.has(seg)) node.dirs.set(seg, {name: seg, dirs: new Map(), files: []});
+        node = node.dirs.get(seg);
+      }
+      node.files.push({name: parts[parts.length - 1], path: p});
+    }
+    return root;
+  }
+
+  // 递归渲染树形：目录在前，文件在后；SKILL.md 置于根层首位
+  function renderTree(nav, node, prefix = '', isRoot = true) {
+    const dirs = [...node.dirs.values()].sort((a, b) => a.name.localeCompare(b.name));
+    let files = node.files.slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (isRoot) files.sort((a, b) => (a.path === 'SKILL.md' ? -1 : b.path === 'SKILL.md' ? 1 : a.name.localeCompare(b.name)));
+    // 目录在前、文件在后
+    const entries = [
+      ...dirs.map(d => ({type: 'dir', node: d})),
+      ...files.map(f => ({type: 'file', ...f})),
+    ];
+    entries.forEach((e, idx) => {
+      const last = idx === entries.length - 1;
+      const branch = last ? '└── ' : '├── ';
+      if (e.type === 'dir') {
+        const row = el('div', 'tree-dir');
+        row.append(el('span', 'tree-guide', prefix + branch));
+        row.append(el('span', 'tree-dname', e.node.name + '/'));
+        nav.append(row);
+        renderTree(nav, e.node, prefix + (last ? '    ' : '│   '), false);
+      } else {
+        const p = e.path, f = current.files[p];
+        const dirty = (f.text && f.content !== f.orig) || current.added.has(p);
+        const b = el('button', 'fitem' + (p === current.active ? ' active' : '') + (dirty ? ' dirty' : ''));
+        b.append(el('span', 'tree-guide', prefix + branch));
+        const [kind, ext] = fileKind(p);
+        const fi = el('span', 'fkind k-' + kind); fi.textContent = ext;
+        const m = el('span', 'fmeta');
+        m.append(el('span', 'fname', e.name));
+        const sub = el('span', 'fsub');
+        if (f.text && f.content != null) { const lines = f.content ? f.content.split('\n').length : 0; sub.textContent = lines + ' 行'; }
+        else sub.textContent = fmt(f.size);
+        m.append(sub);
+        b.append(fi, m);
+        if (dirty) b.append(el('span', 'fdot'));
+        b.addEventListener('click', async () => { current.active = p; try { await ensureContent(p); } catch (err) { toast(err.message, true); } renderDetail(); });
+        nav.append(b);
+      }
+    });
+  }
+
 
   // 拆分 Markdown 顶部 YAML frontmatter，返回 {front:[[k,v]], body}
   function splitFrontmatter(text) {

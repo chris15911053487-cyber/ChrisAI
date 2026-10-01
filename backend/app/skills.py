@@ -117,10 +117,43 @@ def validate_files(files: dict[str, bytes]) -> dict[str, bytes]:
 
 
 # ---------- 读取 ----------
+# owner 目录名：匿名访客 32 位 hex，或登录用户 u_{数字}
+OWNER_RE = re.compile(r"^(?:[a-f0-9]{32}|u_[0-9]+)$")
+
+
 def _user_root(vid: str) -> Path:
-    if not VID_RE.match(vid):
+    if not OWNER_RE.match(vid or ""):
         raise SkillError("非法访客 ID", 403)
     return config.SKILLS_USERS_DIR / vid
+
+
+def migrate_user_skills(old_owner: str, new_owner: str) -> dict:
+    """把 old_owner 的技能目录迁移到 new_owner。目标已存在同名技能则跳过（不覆盖账号已有）。
+    返回 {moved, skipped}。"""
+    if not (OWNER_RE.match(old_owner or "") and OWNER_RE.match(new_owner or "")):
+        return {"moved": 0, "skipped": 0}
+    src_root = config.SKILLS_USERS_DIR / old_owner
+    if not src_root.is_dir() or old_owner == new_owner:
+        return {"moved": 0, "skipped": 0}
+    dst_root = config.SKILLS_USERS_DIR / new_owner
+    dst_root.mkdir(parents=True, exist_ok=True)
+    moved = skipped = 0
+    for d in sorted(src_root.iterdir()):
+        if not (d.is_dir() and not d.is_symlink() and NAME_RE.match(d.name)):
+            continue
+        target = dst_root / d.name
+        if target.exists():
+            skipped += 1
+            continue
+        shutil.move(str(d), str(target))
+        moved += 1
+    # 清理空的旧目录
+    try:
+        if not any(src_root.iterdir()):
+            src_root.rmdir()
+    except OSError:
+        pass
+    return {"moved": moved, "skipped": skipped}
 
 
 def _load(path: Path, scope: str, owner: Optional[str] = None) -> Optional[Skill]:

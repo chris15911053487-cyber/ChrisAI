@@ -31,6 +31,38 @@
     rail.appendChild(a);
   }
 
+  // 账号项：固定在最底部（设置下方），行为随登录态变化
+  const account = document.createElement('button');
+  account.type = 'button';
+  account.className = 'nav-item bottom nav-account';
+  account.id = 'navAccount';
+  rail.appendChild(account);
+
+  function renderAccount(st) {
+    const loggedIn = st && st.logged_in;
+    const name = loggedIn && st.user ? st.user.username : '登录';
+    const iconName = loggedIn ? 'bot' : 'logout';
+    account.innerHTML =
+      `<span class="ic" aria-hidden="true">${window.icon ? window.icon(iconName) : ''}</span>` +
+      `<span class="tx"></span>`;
+    account.querySelector('.tx').textContent = name;
+    account.title = loggedIn ? ('已登录：' + name + '（点击退出）') : '登录 / 注册';
+    account.setAttribute('aria-label', account.title);
+  }
+
+  account.addEventListener('click', () => {
+    const a = window.clAuth;
+    if (!a) return;
+    if (a.state.logged_in) {
+      if (confirm('确定退出登录？')) a.logout();
+    } else {
+      a.openAuth('login');
+    }
+  });
+
+  if (window.clAuth) window.clAuth.onChange(renderAccount);
+  else renderAccount({ logged_in: false });   // auth.js 未加载时的降级显示
+
   // 移动端遮罩
   const scrim = document.createElement('div');
   scrim.className = 'nav-scrim';

@@ -20,6 +20,14 @@ CREATE TABLE IF NOT EXISTS visitors (
     created_at REAL NOT NULL,
     last_seen REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT NOT NULL,
+    daily_turns INTEGER NOT NULL DEFAULT -2,   -- -2=用全局登录额度；-1=不限制；>=0=自定义上限
+    created_at REAL NOT NULL,
+    last_login REAL NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     visitor_id TEXT NOT NULL,
@@ -178,7 +186,8 @@ def _one(sql: str, args: tuple = ()) -> Optional[dict]:
 
 
 def today() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    """按配置时区（默认 Asia/Shanghai）返回当天日期，用作用量分桶 key。"""
+    return datetime.now(config.QUOTA_TZINFO).strftime("%Y-%m-%d")
 
 
 # ---------- visitors ----------
@@ -189,6 +198,67 @@ def touch_visitor(vid: str) -> None:
         "ON CONFLICT(id) DO UPDATE SET last_seen=excluded.last_seen",
         (vid, now, now),
     )
+
+
+# ---------- users（登录账号） ----------
+def user_create(username: str, password_hash: str) -> dict:
+    now = time.time()
+    cur = _exec(
+        "INSERT INTO users(username, password_hash, created_at, last_login) VALUES(?,?,?,?)",
+        (username, password_hash, now, now),
+    )
+    return user_get(cur.lastrowid)
+
+
+def user_get(uid: int) -> Optional[dict]:
+    return _one("SELECT * FROM users WHERE id=?", (uid,))
+
+
+def user_get_by_name(username: str) -> Optional[dict]:
+    return _one("SELECT * FROM users WHERE username=? COLLATE NOCASE", (username,))
+
+
+def user_touch_login(uid: int) -> None:
+    _exec("UPDATE users SET last_login=? WHERE id=?", (time.time(), uid))
+
+
+def user_set_daily_turns(uid: int, daily_turns: int) -> Optional[dict]:
+    _exec("UPDATE users SET daily_turns=? WHERE id=?", (daily_turns, uid))
+    return user_get(uid)
+
+
+def user_list(limit: int = 500) -> list[dict]:
+    return _all(
+        "SELECT id, username, daily_turns, created_at, last_login FROM users "
+        "ORDER BY created_at DESC LIMIT ?",
+        (limit,),
+    )
+
+
+# ---------- 匿名数据迁移（登录时把 old_owner 名下数据转到 new_owner） ----------
+def count_owner_data(owner: str) -> dict:
+    """统计某 owner 名下可迁移的数据量，用于判断是否需要迁移及回显。"""
+    return {
+        "sessions": _one("SELECT COUNT(*) n FROM sessions WHERE visitor_id=?", (owner,))["n"],
+        "kbs": _one("SELECT COUNT(*) n FROM knowledge_bases WHERE owner=?", (owner,))["n"],
+    }
+
+
+def reassign_owner(old_owner: str, new_owner: str) -> dict:
+    """把 sessions 与 knowledge_bases 的归属从 old_owner 原子性改到 new_owner。
+    messages / files / kb_documents / kb_chunks 通过外键归属 session/kb，无需单独迁移。
+    返回迁移计数。"""
+    with _lock:
+        c = conn()
+        c.execute("BEGIN")
+        try:
+            s = c.execute("UPDATE sessions SET visitor_id=? WHERE visitor_id=?", (new_owner, old_owner)).rowcount
+            k = c.execute("UPDATE knowledge_bases SET owner=? WHERE owner=?", (new_owner, old_owner)).rowcount
+            c.execute("COMMIT")
+        except BaseException:
+            c.execute("ROLLBACK")
+            raise
+    return {"sessions": s, "kbs": k}
 
 
 # ---------- sessions ----------

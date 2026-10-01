@@ -558,7 +558,38 @@
   }
 
   function setQuota(q) {
-    if (q) $('quota').textContent = '今日剩余 ' + q.turns_left + ' / ' + q.turns_per_day + ' 轮对话';
+    const box = $('quota');
+    if (!q) { box.textContent = ''; return; }
+    box.replaceChildren();
+    if (q.unlimited) {
+      box.append(el('div', 'q-line', '今日对话：不限次数'));
+    } else {
+      box.append(el('div', 'q-line', `今日剩余 ${q.turns_left} / ${q.turns_per_day} 轮对话`));
+      if (q.turns_left === 0 && q.reset_hint) box.append(el('div', 'q-sub', q.reset_hint));
+    }
+    // 未登录时给出登录引导（额度更高）
+    if (!q.logged_in) {
+      const b = el('button', 'q-login', q.turns_left === 0 ? '登录获取更多额度' : '登录 / 注册');
+      b.type = 'button';
+      b.addEventListener('click', () => window.clAuth && window.clAuth.openAuth('login'));
+      box.append(b);
+    }
+  }
+
+  /* ---------------- 登录态（复用全站共享 window.clAuth） ---------------- */
+  let lastLoggedIn = null;   // 记录上一次登录态，仅在真正翻转时重置会话
+
+  if (window.clAuth) {
+    window.clAuth.onChange(st => {
+      setQuota(st.quota);
+      if (!st.loaded) return;                      // 尚未拉到登录态，忽略
+      const now = !!st.logged_in;
+      if (lastLoggedIn === null) { lastLoggedIn = now; return; }  // 首次加载完成：设基线，不重置
+      if (now !== lastLoggedIn) {                   // 登录/登出翻转：owner 改变，重置到新对话
+        lastLoggedIn = now;
+        if (!busy) { setSid(null); newChat(); }
+      }
+    });
   }
 
   /* ---------------- 交互绑定 ---------------- */
@@ -583,8 +614,9 @@
     const ok = d && d.status === 'ok' && d.key_configured;
     $('dot').classList.toggle('off', !ok);
     $('statusText').textContent = ok ? '在线 · ' + ((curModel() || {}).name || d.model) : '暂无可用模型';
-    setQuota(d.quota);
   }).catch(() => { $('dot').classList.add('off'); $('statusText').textContent = '离线'; });
+
+  // 登录态与配额由全站共享 window.clAuth 统一管理（见上方 onChange 订阅）
 
   loadModels();
   const initial = sidFromHash();

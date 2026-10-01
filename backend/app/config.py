@@ -1,6 +1,7 @@
 """集中配置：全部来自环境变量，密钥不写入代码。"""
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 def _int(name: str, default: int) -> int:
@@ -48,10 +49,26 @@ SKILLS_BUILTIN_DIR = Path(os.getenv("SKILLS_BUILTIN_DIR", "/skills/builtin"))
 
 # ---- 限流 / 配额 ----
 RATE_IP_PER_MIN = _int("RATE_IP_PER_MIN", 5)             # 每 IP 每分钟对话请求数
-VISITOR_DAILY_TURNS = _int("VISITOR_DAILY_TURNS", 10)    # 每访客每天对话轮数
+VISITOR_DAILY_TURNS = _int("VISITOR_DAILY_TURNS", 10)    # 匿名访客每天对话轮数
+USER_DAILY_TURNS = _int("USER_DAILY_TURNS", 30)          # 登录用户每天对话轮数（用户表 daily_turns 可覆盖）
 IP_DAILY_TURNS = _int("IP_DAILY_TURNS", 30)              # 每 IP 每天对话轮数（防清 cookie 绕过）
 GLOBAL_DAILY_TOKENS = _int("GLOBAL_DAILY_TOKENS", 1_000_000)
 RATE_WRITE_PER_MIN = _int("RATE_WRITE_PER_MIN", 20)      # skill 写操作 / 上传
+
+# ---- 配额日切时区（"每日"按此时区的自然日计算；也用于向用户提示恢复时间） ----
+QUOTA_TZ = os.getenv("QUOTA_TZ", "Asia/Shanghai")
+try:
+    QUOTA_TZINFO = ZoneInfo(QUOTA_TZ)
+except (ZoneInfoNotFoundError, ValueError):
+    QUOTA_TZ = "Asia/Shanghai"
+    QUOTA_TZINFO = ZoneInfo("Asia/Shanghai")
+QUOTA_TZ_LABEL = os.getenv("QUOTA_TZ_LABEL", "北京时间")  # 面向用户的时区名
+
+# ---- 登录鉴权 ----
+# 会话 cookie 的 HMAC 签名密钥；留空时自动用 ADMIN_TOKEN 兜底，仍建议显式设置
+AUTH_SECRET = os.getenv("AUTH_SECRET", "")
+SESSION_COOKIE = os.getenv("SESSION_COOKIE", "cl_sess")
+SESSION_TTL_DAYS = _int("SESSION_TTL_DAYS", 30)          # 登录态有效期
 
 # ---- Agent ----
 MAX_TOOL_ROUNDS = _int("MAX_TOOL_ROUNDS", 10)

@@ -7,8 +7,8 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#FAFAF9">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
-<link rel="stylesheet" href="tokens.css?v=20260930e">
-<link rel="stylesheet" href="agent.css?v=20260930e">
+<link rel="stylesheet" href="tokens.css?v=20261001b">
+<link rel="stylesheet" href="agent.css?v=20261001b">
 <style>
 body{overflow:auto;display:block}
 .bar{position:sticky;top:0}
@@ -35,6 +35,8 @@ body{overflow:auto;display:block}
 .tbl{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface)}
 .trow{display:grid;grid-template-columns:44px 1fr 1.4fr 90px 170px;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
 .trow:last-child{border-bottom:none}
+.trow.users{grid-template-columns:44px 1fr 1.5fr 120px 260px}
+@media(max-width:720px){.trow.users{grid-template-columns:36px 1fr}}
 .trow:not(.head):hover{background:var(--bg)}
 .trow.head{background:var(--bg);font:500 11px/1 var(--mono);color:var(--text-3);letter-spacing:.05em;text-transform:uppercase;padding-block:10px}
 .trow .c-ic{font-size:20px;display:grid;place-items:center;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--bg)}
@@ -71,7 +73,7 @@ dialog .fieldhint{font-size:12px;line-height:1.55;color:var(--text-3);margin-top
 <header class="bar">
   <div class="left">
     <a class="logo" href="index.html" aria-label="返回首页">CL</a>
-    <h1>后台管理<small>卡片配置</small></h1>
+    <h1>后台管理<small>卡片 · 用户</small></h1>
   </div>
   <div class="actions">
     <a class="iconbtn ghost" href="index.html"><i data-i="arrow-left"></i>返回站点</a>
@@ -145,7 +147,7 @@ dialog .fieldhint{font-size:12px;line-height:1.55;color:var(--text-3);margin-top
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="icons.js?v=20260930e"></script>
+<script src="icons.js?v=20261001b"></script>
 <script>
 (() => {
   'use strict';
@@ -238,6 +240,91 @@ dialog .fieldhint{font-size:12px;line-height:1.55;color:var(--text-3);margin-top
       wrap.append(tbl);
       panel.append(wrap);
     }
+    await renderUsers(panel);
+  }
+
+  /* ---------- 用户管理 ---------- */
+  const fmtTime = ts => {
+    if (!ts) return '—';
+    const d = new Date(ts * 1000);
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  };
+
+  // daily_turns: -2=默认(用登录额度) / -1=不限 / >=0=自定义
+  function quotaLabel(u, userDefault) {
+    if (u.daily_turns === -1) return { text: '不限制', cls: 'on' };
+    if (u.daily_turns === null || u.daily_turns < 0) return { text: '默认 ' + userDefault + ' 轮', cls: '' };
+    return { text: u.daily_turns + ' 轮/日', cls: '' };
+  }
+
+  async function renderUsers(panel) {
+    let data;
+    try { data = await api('/api/admin/users'); }
+    catch (e) { if (e.auth) return showLogin('令牌无效'); return toast(e.message, true); }
+    const users = data.users || [];
+    const userDefault = data.user_daily_turns;
+
+    const wrap = el('div', 'section');
+    const head = el('div', 'section-head');
+    const h = el('h3'); h.innerHTML = icon('bot'); h.append(el('span', null, '用户'));
+    const right = el('div', 'sh-right');
+    right.append(el('span', 'count', users.length + ' 位用户'));
+    head.append(h, right);
+    wrap.append(head);
+
+    const tbl = el('div', 'tbl');
+    const hr = el('div', 'trow head users');
+    hr.append(el('div', 'c-ic', ''), el('div', 'c-title', '用户名'), el('div', 'c-desc', '注册 · 最后登录'),
+              el('div', 'c-flags', '今日 / 额度'), el('div', 'c-ops', ''));
+    tbl.append(hr);
+    if (!users.length) tbl.append(el('div', 'empty', '还没有注册用户'));
+    for (const u of users) tbl.append(userRow(u, userDefault));
+    wrap.append(tbl);
+    panel.append(wrap);
+  }
+
+  function userRow(u, userDefault) {
+    const row = el('div', 'trow users');
+    const ic = el('div', 'c-ic'); ic.innerHTML = icon('bot'); row.append(ic);
+
+    const t = el('div', 'c-title');
+    t.append(el('span', null, u.username));
+    t.append(el('small', null, 'ID ' + u.id));
+    row.append(t);
+
+    row.append(el('div', 'c-desc', '注册 ' + fmtTime(u.created_at) + ' · 登录 ' + fmtTime(u.last_login)));
+
+    const flags = el('div', 'c-flags');
+    const q = quotaLabel(u, userDefault);
+    flags.append(el('span', 'pill ' + q.cls, q.text));
+    const today = el('small', null, '今日 ' + (u.today_turns || 0) + ' 轮');
+    today.style.cssText = 'display:block;margin-top:4px;font:400 11px/1.4 var(--mono);color:var(--text-3)';
+    flags.append(today);
+    row.append(flags);
+
+    const ops = el('div', 'c-ops');
+    const setQuota = async (daily_turns, okMsg) => {
+      try { await jsend('/api/admin/users/' + u.id, { daily_turns }, 'PUT'); toast(okMsg); renderPanel(); }
+      catch (e) { toast(e.auth ? '令牌无效，请重新登录' : e.message, true); }
+    };
+    const bUnlimited = el('button', 'iconbtn', u.daily_turns === -1 ? '取消不限' : '设为不限');
+    bUnlimited.addEventListener('click', () => setQuota(u.daily_turns === -1 ? -2 : -1,
+      u.daily_turns === -1 ? '已恢复默认额度' : '已设为不限制'));
+    const bCustom = el('button', 'iconbtn', '自定义额度');
+    bCustom.addEventListener('click', () => {
+      const cur = (u.daily_turns != null && u.daily_turns >= 0) ? u.daily_turns : userDefault;
+      const v = prompt('设置「' + u.username + '」每日对话轮数（输入数字；-1 表示不限制；留空取消）：', String(cur));
+      if (v === null || v.trim() === '') return;
+      const n = parseInt(v.trim(), 10);
+      if (isNaN(n) || n < -1) { toast('请输入 -1 或非负整数', true); return; }
+      setQuota(n, '额度已更新');
+    });
+    const bDefault = el('button', 'iconbtn', '恢复默认');
+    bDefault.addEventListener('click', () => setQuota(-2, '已恢复默认额度'));
+    ops.append(bUnlimited, bCustom, bDefault);
+    row.append(ops);
+    return row;
   }
 
   function rowFor(c) {

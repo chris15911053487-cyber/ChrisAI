@@ -56,6 +56,10 @@ a.logo:hover{background:#27272A}
 .side-empty{color:var(--text-3);font-size:12.5px;padding:8px 10px}
 .side-foot{font:11px/1.5 var(--mono);color:var(--text-3);padding:10px 8px 2px;border-top:1px solid var(--line)}
 .side-foot:empty{display:none}
+.side-foot .q-sub{color:var(--text-3);opacity:.85;margin-top:2px}
+.side-foot .q-login{margin-top:8px;width:100%;border:1px solid var(--line-2);border-radius:8px;background:var(--surface);color:var(--accent);font:12px/1 var(--sans);padding:7px 10px;cursor:pointer;transition:border-color var(--dur),background var(--dur)}
+.side-foot .q-login:hover{border-color:var(--accent);background:var(--accent-soft)}
+#authBtn span{margin-left:4px}
 .scrim{display:none}
 .main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--surface)}
 

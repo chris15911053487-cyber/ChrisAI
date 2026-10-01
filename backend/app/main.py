@@ -25,7 +25,7 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, Uplo
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, embeddings, knowledge, llm, models, ratelimit, settings, skills, workspace
+from . import agent, auth, config, db, embeddings, knowledge, llm, models, ratelimit, settings, skills, workspace
 from .ratelimit import QuotaError
 from .skills import SkillError
 from .tools import describe_call
@@ -98,14 +98,23 @@ class VisitorMiddleware:
 
         headers = {k.decode().lower(): v.decode() for k, v in scope["headers"]}
         vid = None
+        sess_token = None
         for part in headers.get("cookie", "").split(";"):
             k, _, v = part.strip().partition("=")
             if k == config.COOKIE_NAME and VID_RE.match(v):
                 vid = v
+            elif k == config.SESSION_COOKIE and v:
+                sess_token = v
         is_new = vid is None
         if is_new:
             vid = secrets.token_hex(16)
-        scope.setdefault("state", {})["vid"] = vid
+        # 解析登录态：有效 token -> owner 为 u_{uid}，否则沿用匿名 vid
+        uid = auth.parse_token(sess_token) if sess_token else None
+        owner = auth.owner_of_user(uid) if uid is not None else vid
+        st = scope.setdefault("state", {})
+        st["vid"] = vid
+        st["uid"] = uid
+        st["owner"] = owner
         secure = headers.get("x-forwarded-proto") == "https"
 
         async def send_wrapper(message):
@@ -131,10 +140,27 @@ async def _quota_err(_: Request, e: QuotaError):
     return JSONResponse({"detail": str(e)}, status_code=e.status)
 
 
+@app.exception_handler(auth.AuthError)
+async def _auth_err(_: Request, e: auth.AuthError):
+    return JSONResponse({"detail": str(e)}, status_code=e.status)
+
+
 def visitor(request: Request) -> str:
-    vid = request.state.vid
-    db.touch_visitor(vid)
-    return vid
+    """数据归属 ID：登录用户为 "u_{uid}"，匿名访客为 32 位 hex vid。"""
+    owner = request.state.owner
+    if not auth.is_user_owner(owner):
+        db.touch_visitor(owner)
+    return owner
+
+
+def current_uid(request: Request) -> Optional[int]:
+    return getattr(request.state, "uid", None)
+
+
+def _session_cookie(token: str, request: Request, max_age: int) -> str:
+    secure = request.headers.get("x-forwarded-proto") == "https"
+    c = (f"{config.SESSION_COOKIE}={token}; Path=/; Max-Age={max_age}; HttpOnly; SameSite=Lax")
+    return c + ("; Secure" if secure else "")
 
 
 def client_ip(request: Request) -> str:
@@ -168,6 +194,60 @@ async def health(request: Request, vid: str = Depends(visitor)):
         "vector": embeddings.info(),
         "quota": ratelimit.remaining(vid),
     }
+
+
+# ---------------- 登录鉴权 ----------------
+class AuthReq(BaseModel):
+    username: str = Field(..., min_length=1, max_length=40)
+    password: str = Field(..., min_length=1, max_length=128)
+
+
+def _user_view(request: Request) -> dict:
+    uid = current_uid(request)
+    if uid is None:
+        return {"logged_in": False, "user": None}
+    u = db.user_get(uid)
+    if not u:
+        return {"logged_in": False, "user": None}
+    return {"logged_in": True, "user": {"id": u["id"], "username": u["username"]}}
+
+
+@app.get("/api/auth/me")
+async def auth_me(request: Request, vid: str = Depends(visitor)):
+    return {**_user_view(request), "quota": ratelimit.remaining(vid)}
+
+
+@app.post("/api/auth/register")
+async def auth_register(req: AuthReq, request: Request):
+    write_limit(request)
+    user = auth.register(req.username, req.password)
+    migrated = auth.migrate_visitor_to_user(request.state.vid, user["id"])
+    token = auth.make_token(user["id"])
+    body = {"logged_in": True, "user": {"id": user["id"], "username": user["username"]},
+            "quota": ratelimit.remaining(auth.owner_of_user(user["id"])), "migrated": migrated}
+    resp = JSONResponse(body)
+    resp.headers["set-cookie"] = _session_cookie(token, request, config.SESSION_TTL_DAYS * 86400)
+    return resp
+
+
+@app.post("/api/auth/login")
+async def auth_login(req: AuthReq, request: Request):
+    write_limit(request)
+    user = auth.login(req.username, req.password)
+    migrated = auth.migrate_visitor_to_user(request.state.vid, user["id"])
+    token = auth.make_token(user["id"])
+    body = {"logged_in": True, "user": {"id": user["id"], "username": user["username"]},
+            "quota": ratelimit.remaining(auth.owner_of_user(user["id"])), "migrated": migrated}
+    resp = JSONResponse(body)
+    resp.headers["set-cookie"] = _session_cookie(token, request, config.SESSION_TTL_DAYS * 86400)
+    return resp
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(request: Request):
+    resp = JSONResponse({"logged_in": False})
+    resp.headers["set-cookie"] = _session_cookie("", request, 0)
+    return resp
 
 
 # ---------------- 会话 ----------------
@@ -596,6 +676,42 @@ async def search_kb(kid: str, req: KbSearchReq, request: Request, vid: str = Dep
 @app.get("/api/admin/stats", dependencies=[Depends(require_admin)])
 async def admin_stats():
     return db.stats()
+
+
+# ---------------- 管理员：用户 ----------------
+def _admin_user_view(u: dict) -> dict:
+    dt = u["daily_turns"]
+    if dt == -1:
+        quota = "unlimited"
+    elif dt is None or dt < 0:
+        quota = "default"      # 用全局登录额度 USER_DAILY_TURNS
+    else:
+        quota = dt
+    return {
+        "id": u["id"], "username": u["username"], "daily_turns": dt, "quota": quota,
+        "created_at": u["created_at"], "last_login": u["last_login"],
+        "today_turns": db.usage_get(f"v:u_{u['id']}")["turns"],
+    }
+
+
+class UserQuotaReq(BaseModel):
+    # unlimited=不限制(-1)；default=用全局登录额度(-2)；或给定非负整数作为自定义上限
+    daily_turns: int = Field(..., ge=-2, le=100000)
+
+
+@app.get("/api/admin/users", dependencies=[Depends(require_admin)])
+async def admin_list_users():
+    return {"users": [_admin_user_view(u) for u in db.user_list()],
+            "user_daily_turns": config.USER_DAILY_TURNS,
+            "visitor_daily_turns": config.VISITOR_DAILY_TURNS}
+
+
+@app.put("/api/admin/users/{uid}", dependencies=[Depends(require_admin)])
+async def admin_set_user_quota(uid: int, req: UserQuotaReq):
+    if db.user_get(uid) is None:
+        raise HTTPException(404, "用户不存在")
+    u = db.user_set_daily_turns(uid, req.daily_turns)
+    return _admin_user_view(u)
 
 
 @app.get("/api/admin/skills", dependencies=[Depends(require_admin)])

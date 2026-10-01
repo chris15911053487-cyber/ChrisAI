@@ -21,6 +21,11 @@
 }
 
 .navrail .nav-item.bottom{ margin-top:auto }   /* 设置：固定在左下角 */
+.navrail .nav-item.bottom ~ .nav-item.bottom{ margin-top:0 }  /* 其后的 bottom 项（账号）紧贴，不再顶开 */
+
+/* 账号项是 <button>，重置为与 .nav-item 一致的外观 */
+.navrail button.nav-account{ width:100%; border:1px solid transparent; background:none; font-family:inherit }
+.navrail button.nav-account .tx{ max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 
 .nav-scrim{ display:none }
 
