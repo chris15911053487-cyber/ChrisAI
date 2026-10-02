@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI 课程｜Chris Li · AI Agent</title>
+<meta name="theme-color" content="#0E0E12">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
+<link rel="stylesheet" href="story.css?v=20261002b">
+</head>
+<body>
+<!-- 故事页渲染器：内容由 /api/courses/<课程>/lessons/<课>/story 提供，播放逻辑见 story.js -->
+<div class="prog" aria-hidden="true"></div>
+
+<header class="tbar">
+  <button type="button" id="ovBtn" aria-controls="side" aria-expanded="false">☰ 总览</button>
+  <span class="l" id="tbL"></span>
+  <span class="n" id="tbN"></span>
+  <div class="segs" id="segs" role="button" tabindex="0" aria-label="打开总览"></div>
+</header>
+
+<aside class="side" id="side" aria-label="课程总览">
+  <div id="sideHd"></div>
+  <div class="ov"><span>阅读进度</span><span id="ovN"></span></div>
+  <div class="ov-bar"><i id="ovBar"></i></div>
+  <nav class="side-list" id="sideList" aria-label="章节与步骤"></nav>
+  <div class="side-ft">
+    <kbd>↓</kbd> <kbd>空格</kbd> 下一步　<kbd>↑</kbd> 上一步<br>
+    <span class="act-demo">互动</span> 需要你动手才能继续
+  </div>
+</aside>
+<div class="scrim" id="scrim"></div>
+<nav class="mact" id="mact" aria-label="步骤操作">
+  <button type="button" class="back" id="mBack" aria-label="上一步">‹</button>
+  <button type="button" class="go" id="mGo">下一步 ›</button>
+</nav>
+<div class="stoast" id="stoast" role="status" aria-live="polite"></div>
+
+<main></main>
+
+<script src="auth.js?v=20261002b"></script>
+<script src="story.js?v=20261002b"></script>
+</body>
+</html>

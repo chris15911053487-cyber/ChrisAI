@@ -165,6 +165,17 @@ CREATE VIRTUAL TABLE IF NOT EXISTS post_fts USING fts5(tokens);
 CREATE TRIGGER IF NOT EXISTS post_chunks_ad AFTER DELETE ON post_chunks BEGIN
     DELETE FROM post_fts WHERE rowid = old.id;
 END;
+-- 内置课程学习进度（仅登录用户）：每课 × 每种学法（video | text | story）一行
+CREATE TABLE IF NOT EXISTS course_progress (
+    owner TEXT NOT NULL,                 -- u_{uid}
+    course_id TEXT NOT NULL,
+    lesson_id TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0,
+    state TEXT,                          -- 互动课过程状态 JSON
+    updated_at REAL NOT NULL,
+    PRIMARY KEY (owner, course_id, lesson_id, mode)
+);
 """
 
 
@@ -906,3 +917,22 @@ def model_set_default(mid: str) -> None:
         except BaseException:
             c.execute("ROLLBACK")
             raise
+
+
+# ---------- 课程进度 ----------
+def course_progress_list(owner: str, course_id: str) -> list[dict]:
+    return _all("SELECT lesson_id, mode, done, updated_at FROM course_progress WHERE owner=? AND course_id=?",
+                (owner, course_id))
+
+
+def course_progress_get(owner: str, course_id: str, lesson_id: str, mode: str) -> Optional[dict]:
+    return _one("SELECT done, state, updated_at FROM course_progress "
+                "WHERE owner=? AND course_id=? AND lesson_id=? AND mode=?", (owner, course_id, lesson_id, mode))
+
+
+def course_progress_upsert(owner: str, course_id: str, lesson_id: str, mode: str,
+                           done: bool, state: Optional[str]) -> None:
+    _exec("INSERT INTO course_progress (owner, course_id, lesson_id, mode, done, state, updated_at) "
+          "VALUES (?,?,?,?,?,?,?) ON CONFLICT(owner, course_id, lesson_id, mode) "
+          "DO UPDATE SET done=excluded.done, state=excluded.state, updated_at=excluded.updated_at",
+          (owner, course_id, lesson_id, mode, 1 if done else 0, state, time.time()))

@@ -46,6 +46,7 @@ WORKSPACES_DIR = DATA_DIR / "workspaces"
 SKILLS_PUBLIC_DIR = DATA_DIR / "skills" / "public"
 SKILLS_USERS_DIR = DATA_DIR / "skills" / "users"
 SKILLS_BUILTIN_DIR = Path(os.getenv("SKILLS_BUILTIN_DIR", "/skills/builtin"))
+COURSES_DIR = Path(os.getenv("COURSES_DIR", "/courses"))          # 内置课程内容（随镜像发布，只读）
 
 # ---- 限流 / 配额 ----
 RATE_IP_PER_MIN = _int("RATE_IP_PER_MIN", 5)             # 每 IP 每分钟对话请求数

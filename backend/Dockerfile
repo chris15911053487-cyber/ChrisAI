@@ -4,7 +4,8 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DATA_DIR=/data \
-    SKILLS_BUILTIN_DIR=/skills/builtin
+    SKILLS_BUILTIN_DIR=/skills/builtin \
+    COURSES_DIR=/courses
 
 WORKDIR /srv
 
@@ -15,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
 
 COPY backend/app ./app
 COPY skills/builtin /skills/builtin
+COPY courses /courses
 
 USER app
 EXPOSE 8000

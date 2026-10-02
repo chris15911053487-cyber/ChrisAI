@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第4课 · AI用得好不好，差在第二句话｜AI入门 · 互动课</title>
+<style>
+  :root{
+    --bg:#FAFAF9;--bg-2:#F4F4F2;--surface:#FFF;--text:#0A0A0A;--text-2:#52525B;--text-3:#8A8A93;
+    --line:#E7E7E4;--line-2:#D6D6D1;--accent:#2B59FF;--accent-ink:#1E40D8;--accent-soft:rgba(43,89,255,.08);
+    --accent-ring:rgba(43,89,255,.28);--ok:#15803D;--ok-soft:rgba(21,128,61,.08);--warn:#B45309;--warn-soft:rgba(180,83,9,.08);
+    --err:#DC2626;--err-soft:rgba(220,38,38,.07);
+    --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Noto Sans SC","Microsoft YaHei",sans-serif;
+    --r-sm:8px;--r:12px;--r-lg:16px;--r-full:999px;
+    --sh-2:0 1px 2px rgba(10,10,10,.04),0 8px 24px -8px rgba(10,10,10,.08);
+    --ease:cubic-bezier(.2,.7,.2,1);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.75}
+  button{font:inherit;cursor:pointer}
+  .app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+
+  /* 左侧步骤导航 */
+  .side{background:var(--surface);border-right:1px solid var(--line);padding:24px 18px;position:sticky;top:0;height:100vh;overflow:auto}
+  .side .back{display:inline-block;font-size:13px;color:var(--text-2);text-decoration:none;margin-bottom:14px}
+  .side .back:hover{color:var(--accent)}
+  .saveerr{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--err);color:#fff;font-size:13px;padding:8px 16px;border-radius:var(--r-full);z-index:10}
+  .side .course{font-size:12px;color:var(--text-3);letter-spacing:.04em}
+  .side h1{font-size:17px;line-height:1.5;margin:6px 0 4px}
+  .side .proto{display:inline-block;font-size:12px;color:var(--warn);background:var(--warn-soft);border-radius:var(--r-full);padding:1px 10px;margin-bottom:12px}
+  .bar{height:6px;background:var(--bg-2);border-radius:var(--r-full);overflow:hidden;margin:6px 0 18px}
+  .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s var(--ease)}
+  .steps{list-style:none;margin:0;padding:0}
+  .steps li{display:flex;gap:10px;align-items:flex-start;padding:7px 8px;border-radius:var(--r-sm);font-size:14px;color:var(--text-3);line-height:1.5}
+  .steps li.can{cursor:pointer;color:var(--text-2)}
+  .steps li.can:hover{background:var(--bg-2)}
+  .steps li.cur{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+  .steps .dot{flex:none;width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line-2);font-size:11px;display:grid;place-items:center;margin-top:1px}
+  .steps li.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+  .steps li.cur .dot{border-color:var(--accent);color:var(--accent)}
+  .steps .sub{display:block;font-size:12px;font-weight:400;color:var(--text-3)}
+  .reset{margin-top:18px;background:none;border:0;color:var(--text-3);font-size:12px;text-decoration:underline}
+
+  /* 主区域 */
+  .main{padding:40px 48px 80px;max-width:880px;width:100%}
+  .tag{display:inline-block;font-size:12px;color:var(--accent-ink);background:var(--accent-soft);border-radius:var(--r-full);padding:2px 10px;margin-bottom:10px}
+  h2{font-size:26px;line-height:1.4;margin:0 0 16px}
+  h3{font-size:18px;margin:24px 0 10px}
+  p{margin:0 0 14px;color:var(--text-2)}
+  p strong,li strong{color:var(--text)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:28px 30px;box-shadow:var(--sh-2);animation:in .35s var(--ease)}
+  @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .quote{border-left:3px solid var(--accent);background:var(--bg-2);padding:12px 16px;border-radius:0 var(--r-sm) var(--r-sm) 0;margin:0 0 16px;color:var(--text)}
+  .big{font-size:20px;color:var(--text);font-weight:600;line-height:1.6;margin:18px 0}
+  .muted{color:var(--text-3);font-size:14px}
+  .nav{display:flex;justify-content:space-between;align-items:center;margin-top:26px;gap:12px}
+  .btn{border:1px solid var(--line-2);background:var(--surface);color:var(--text);padding:9px 20px;border-radius:var(--r-full);font-size:15px;transition:.2s var(--ease)}
+  .btn:hover{border-color:var(--text-3)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.pri:hover{background:var(--accent-ink)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .link{background:none;border:0;color:var(--text-3);font-size:14px;text-decoration:underline;padding:0}
+
+  /* 选项 */
+  .opts{display:grid;gap:10px;margin:16px 0}
+  .opt{text-align:left;border:1.5px solid var(--line);background:var(--surface);border-radius:var(--r);padding:12px 16px;color:var(--text);line-height:1.6;transition:.2s var(--ease)}
+  .opt:hover:not(:disabled){border-color:var(--accent-ring);background:var(--accent-soft)}
+  .opt:disabled{cursor:default}
+  .opt.sel{border-color:var(--accent);background:var(--accent-soft)}
+  .opt.right{border-color:var(--ok);background:var(--ok-soft)}
+  .opt.wrong{border-color:var(--err);background:var(--err-soft)}
+  .opt .k{display:inline-block;width:22px;font-weight:700;color:var(--text-3)}
+  .fb{border-radius:var(--r);padding:14px 16px;margin:12px 0;animation:in .3s var(--ease);font-size:15px;line-height:1.7}
+  .fb.ok{background:var(--ok-soft);border:1px solid rgba(21,128,61,.2)}
+  .fb.no{background:var(--warn-soft);border:1px solid rgba(180,83,9,.2)}
+  .fb.info{background:var(--accent-soft);border:1px solid var(--accent-ring)}
+  .fb b{display:block;margin-bottom:4px}
+
+  /* 分类题 */
+  .cls{border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin:12px 0;background:var(--surface)}
+  .cls .q{color:var(--text);margin-bottom:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border:1.5px solid var(--line);background:var(--surface);border-radius:var(--r-full);padding:4px 14px;font-size:14px}
+  .chip:hover:not(:disabled){border-color:var(--accent-ring)}
+  .chip.right{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+  .chip.wrong{border-color:var(--err);background:var(--err-soft);color:var(--err)}
+
+  /* 案例分支 */
+  .cases{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+  .case{border:1.5px solid var(--line);border-radius:var(--r-lg);padding:18px;background:var(--surface);text-align:left;position:relative;transition:.2s var(--ease)}
+  .case:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .case .who{font-size:18px;font-weight:700;color:var(--text)}
+  .case .role{font-size:13px;color:var(--text-3);margin-bottom:8px}
+  .case .dir{font-size:13px;color:var(--accent-ink)}
+  .case .ok{position:absolute;top:12px;right:12px;font-size:12px;color:var(--ok);background:var(--ok-soft);border-radius:var(--r-full);padding:0 8px}
+
+  /* 对话 */
+  .chat{display:flex;flex-direction:column;gap:12px;margin:16px 0}
+  .msg{max-width:88%;padding:11px 15px;border-radius:14px;font-size:15px;line-height:1.7;white-space:pre-wrap;animation:in .3s var(--ease)}
+  .msg.u{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+  .msg.a{align-self:flex-start;background:var(--bg-2);color:var(--text);border-bottom-left-radius:4px}
+  .msg .who{display:block;font-size:12px;opacity:.7;margin-bottom:2px}
+  .msg .line{display:block;padding:3px 6px;margin:2px -6px;border-radius:6px}
+  .msg .line.pick{cursor:pointer}
+  .msg .line.pick:hover{background:var(--accent-soft)}
+  .msg .line.bad{background:var(--err-soft);text-decoration:underline wavy var(--err)}
+  .msg .line.miss{background:var(--warn-soft)}
+  .msgtag{align-self:flex-end;font-size:12px;margin-top:-6px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .msgtag span{border-radius:var(--r-full);padding:0 8px}
+  .msgtag .g{color:var(--ok);background:var(--ok-soft)}
+  .msgtag .w{color:var(--warn);background:var(--warn-soft)}
+  .typing{align-self:flex-start;color:var(--text-3);font-size:14px}
+  .composer{display:flex;gap:10px;align-items:flex-end;border:1.5px solid var(--line);border-radius:var(--r);padding:8px;background:var(--surface)}
+  .composer:focus-within{border-color:var(--accent)}
+  .composer textarea{flex:1;border:0;outline:0;resize:none;font:inherit;font-size:15px;min-height:44px;max-height:160px;padding:4px 6px;background:transparent}
+  .hints{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+  .hints .chip{font-size:13px}
+  .goal{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 0}
+  .goal span{font-size:13px;border-radius:var(--r-full);padding:2px 10px;background:var(--bg-2);color:var(--text-3)}
+  .goal span.on{background:var(--ok-soft);color:var(--ok)}
+  .sim{font-size:12px;color:var(--warn)}
+
+  /* 工具卡 */
+  .tools{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+  .tool{border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;background:var(--bg)}
+  .tool h4{margin:0 0 8px;font-size:16px}
+  .tool ol{margin:0;padding-left:20px;color:var(--text-2);font-size:15px}
+  .tool li{margin:4px 0}
+
+  /* 点评 */
+  .score{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+  .score div{border:1px solid var(--line);border-radius:var(--r);padding:14px;text-align:center;background:var(--bg)}
+  .score .n{font-size:22px;letter-spacing:2px;color:var(--warn)}
+  .score .l{font-size:14px;color:var(--text-2)}
+  ul.pts{padding-left:20px;margin:8px 0 14px}
+  ul.pts li{margin:6px 0;color:var(--text-2)}
+  textarea.note{width:100%;min-height:90px;border:1.5px solid var(--line);border-radius:var(--r);padding:10px 12px;font:inherit;font-size:15px;outline:0}
+  textarea.note:focus{border-color:var(--accent)}
+
+  @media (max-width:860px){
+    .app{grid-template-columns:1fr}
+    .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+    .steps{display:flex;flex-wrap:wrap;gap:4px}
+    .steps li{padding:4px 8px}
+    .steps .sub,.steps .txt{display:none}
+    .main{padding:24px 18px 60px}
+    .cases,.tools,.score{grid-template-columns:1fr}
+    .card{padding:22px 18px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <a class="back" href="/lesson.html?course=ai-intro&amp;lesson=l4">← 返回课程</a>
+    <div class="course">AI入门 · 第4课 · 互动课</div>
+    <h1>AI用得好不好，差在第二句话</h1>
+    <span class="proto">练习中的 AI 回复为模拟</span>
+    <div class="bar"><i id="bar"></i></div>
+    <ul class="steps" id="steps"></ul>
+    <button class="reset" id="reset">清空进度，重新开始</button>
+  </aside>
+  <main class="main"><div id="view"></div></main>
+</div>
+
+<script>
+/* =========================================================
+ * 第4课课程剧本（内容与播放逻辑分离）
+ * ========================================================= */
+const STEPS = [
+  { id:'s0', label:'开场：两种结局' },
+  { id:'s1', label:'第一次回答，只是反馈' },
+  { id:'s2', label:'为什么第一次不够好' },
+  { id:'s3', label:'走进案例', sub:'分支：小林 / 老陈 / 王总' },
+  { id:'s4', label:'工具卡' },
+  { id:'s5', label:'实操①：向内追问', sub:'让自己想清楚' },
+  { id:'s6', label:'实操②：向外纠正', sub:'让 AI 改对' },
+  { id:'s7', label:'教练点评' },
+  { id:'s8', label:'反思：AI 是放大器' },
+  { id:'s9', label:'小结与带走练习' },
+];
+
+/* 五种追问 + 两个动作：识别规则（关键词模拟） */
+const ASK_TYPES = [
+  { k:'原因', re:/为什么|依据|原因|凭什么|怎么得出/, starter:'为什么这么说？依据是什么？',
+    reply:'这么说主要基于一般情况下的经验。不过坦白讲，这些依据是通用的，不一定适合你。如果你告诉我你的具体处境，我可以说明哪些依据对你成立、哪些不成立。' },
+  { k:'可能', re:/别的|其他|还有没有|另外|替代|不同的(做法|方案|解释)/, starter:'还有没有别的做法或解释？',
+    reply:'有的。除了上面说的思路，还可以反过来想：先不急着找方法，而是先找到一个最小的、这周就能验证的小目标。另一种做法是先找一个已经做成这件事的人，看他是怎么走过来的。' },
+  { k:'遗漏', re:/忽略|遗漏|漏掉|风险|没考虑|盲点/, starter:'我可能忽略了什么？最大的风险在哪？',
+    reply:'你可能忽略了两点：第一，你的时间和精力是有限的，上面五条不可能同时做；第二，最大的风险是一直在"准备"，却迟迟没有开始做一件具体的事。' },
+  { k:'自己', re:/我的情况|结合我|对我|我适合|我这种|像我这样/, starter:'结合我的情况，这对我意味着什么？',
+    reply:'要回答这个，我需要知道更多关于你的信息：你现在处在什么阶段？已经尝试过什么？最卡住你的是哪一点？你说得越具体，我的建议就越能对上你。' },
+  { k:'行动', re:/第一步|怎么开始|具体(怎么|做)|计划|下一步|从哪/, starter:'如果要开始做，第一步具体做什么？',
+    reply:'第一步可以很小：今天花 30 分钟，把你现在的情况和想达到的样子各写三条，然后对比找出差距最大的那一条。明天只针对这一条做一件事。' },
+  { k:'反问', re:/问我|你问我|向我提问|帮我判断/, starter:'你问我几个问题，帮我判断一下。',
+    reply:'好的，我先问你三个问题：\n1. 这件事你最希望在多长时间内看到变化？\n2. 过去类似的事，你做成过吗？是怎么做成的？\n3. 如果只能改变一件事，你会选什么？' },
+  { k:'换角色', re:/扮演|角色|站在.{0,8}(角度|立场)|假如你是/, starter:'你扮演一位资深从业者，从他的角度看看。',
+    reply:'好，换到一位资深从业者的角度：他不会先看你列了多少条计划，而会先问"你做过什么具体的事"。从他的视角看，一个做完的小成果，比十条计划更有说服力。' },
+];
+const MISUSE_RE = /再详细|详细一点|详细些|再来一版|专业一点|再写一遍|重新写|换个说法|再丰富/;
+
+/* 实操②：预埋错误的 AI 回答 */
+const PLANTED = {
+  task:'给刚工作的年轻人讲讲：为什么要尽早存钱，以及什么是复利？',
+  lines:[
+    { t:'刚工作就开始存钱，最大的好处是让时间帮你。' },
+    { t:'比如每天存 20 元，一年下来大约就是 2000 元。', err:'e1' },
+    { t:'复利的意思是"利息也会产生利息"，也就是常说的"利滚利"。' },
+    { t:'举个例子：1 万元按年化 10% 复利计算，2 年后就是 12000 元。', err:'e2' },
+    { t:'所以只要坚持复利投资，任何理财产品都能保证收益，不会亏损。', err:'e3' },
+    { t:'建议你从现在开始，每月固定存下收入的一部分。' },
+  ],
+  errors:{
+    e1:{ re:/2000|7300|20\s*元|每天存/, name:'每天 20 元一年约 2000 元', fix:'每天 20 元，一年是 20 × 365 = 7300 元，不是 2000 元。' },
+    e2:{ re:/12000|12100|两年|2\s*年|单利/, name:'1 万元 10% 复利 2 年是 12000 元', fix:'按复利计算，2 年后应为 10000 × 1.1 × 1.1 = 12100 元；12000 元是单利的算法。' },
+    e3:{ re:/保证|亏损|不会亏|亏钱|风险|绝对|任何/, name:'复利能保证任何产品不亏损', fix:'复利只是一种计息方式，不能保证收益。理财产品都有风险，可能亏损，"保证不亏"的说法是错误的。' },
+  },
+  whyRe:/因为|应该是|实际|算下来|算一下|其实|而不是|才对|×|\*|乘/,
+  checkRe:/重新|核对|核实|检查|依据|来源|区分|确认|再算/,
+};
+
+/* =========================================================
+ * 状态（保存到账号的学习记录，换设备也能接着学）
+ * ========================================================= */
+/* 本页由 /api/courses/<课程>/lessons/<课>/interactive 提供，进度接口与之同级 */
+const API = location.pathname.replace(/\/interactive\/?$/, '/progress');
+const fresh = () => ({
+  cur:'s0', done:[], choice:{}, cls:{}, cases:{}, caseView:null, reflect:'',
+  inward:{ msgs:[], types:[], misuse:0, started:false, finished:false },
+  outward:{ msgs:[], found:[], why:false, check:false, vague:0, finished:false },
+});
+let S = fresh();
+let saveTimer = null, saving = Promise.resolve();
+function put(body){
+  saving = saving.then(() => fetch(API, { method:'PUT', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({ mode:'interactive', ...body }) })
+    .then(r => { if(!r.ok) throw r; saveErr(''); })
+    .catch(r => saveErr(r && r.status === 401 ? '登录已过期，进度未保存，请返回课程重新登录' : '进度保存失败，请检查网络')));
+  return saving;
+}
+/* 学习过程中状态频繁变化：合并 600ms 内的修改再保存 */
+function save(){ clearTimeout(saveTimer); saveTimer = setTimeout(() => { saveTimer = null; put({ state:S }); }, 600); }
+function saveErr(msg){
+  let e = document.getElementById('saveerr');
+  if(!msg){ e && e.remove(); return; }
+  if(!e){ e = document.createElement('div'); e.id = 'saveerr'; e.className = 'saveerr'; e.setAttribute('role','alert'); document.body.appendChild(e); }
+  e.textContent = msg;
+}
+/* 离开页面前把未保存的修改发出去 */
+addEventListener('pagehide', () => { if(saveTimer){ clearTimeout(saveTimer); saveTimer = null;
+  fetch(API, { method:'PUT', credentials:'same-origin', keepalive:true, headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ mode:'interactive', state:S }) }); } });
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $ = sel => document.querySelector(sel);
+const idx = id => STEPS.findIndex(s => s.id === id);
+
+function go(id){ S.cur = id; S.caseView = null; save(); render(); window.scrollTo({top:0,behavior:'smooth'}); }
+function complete(id, next){ if(!S.done.includes(id)) S.done.push(id); go(next); }
+function navBtns(nextLabel, nextId, enabled=true, extra=''){
+  const i = idx(S.cur);
+  return `<div class="nav">
+    ${i>0 ? `<button class="btn" data-back>← 上一步</button>` : '<span></span>'}
+    <span>${extra}<button class="btn pri" data-next="${nextId}" ${enabled?'':'disabled'}>${nextLabel} →</button></span>
+  </div>`;
+}
+function bindNav(root){
+  root.querySelector('[data-back]')?.addEventListener('click', () => go(STEPS[idx(S.cur)-1].id));
+  root.querySelectorAll('[data-next]').forEach(b => b.addEventListener('click', () => complete(S.cur, b.dataset.next)));
+}
+
+/* =========================================================
+ * 通用：单选题（每个选项有反馈；可设正确项，也可全部汇合）
+ * ========================================================= */
+function choiceBlock(key, q, opts){
+  const picked = S.choice[key];
+  const html = `<p class="big">${q}</p><div class="opts">${opts.map((o,i)=>{
+      let cls = '';
+      if(picked!==undefined){ if(o.right) cls='right'; else if(i===picked) cls = o.right===false ? 'wrong':'sel'; }
+      return `<button class="opt ${cls}" data-c="${key}" data-i="${i}" ${picked!==undefined?'disabled':''}><span class="k">${'ABCD'[i]}</span>${o.t}</button>`;
+    }).join('')}</div>
+    ${picked!==undefined ? `<div class="fb ${opts[picked].right===false?'no':(opts[picked].right?'ok':'info')}">${opts[picked].fb}</div>` : ''}`;
+  return { html, answered: picked!==undefined };
+}
+function bindChoice(root){
+  root.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => {
+    S.choice[b.dataset.c] = +b.dataset.i; save(); render();
+  }));
+}
+
+/* =========================================================
+ * 各步骤
+ * ========================================================= */
+const VIEWS = {
+
+s0(){
+  const c = choiceBlock('s0', '你平时拿到 AI 的回答，通常会怎么做？', [
+    { t:'看着差不多，复制、粘贴、交差', fb:'<b>这是"太信任 AI"。</b>答案是不是你真正需要的，你还没来得及想。' },
+    { t:'发现有错，心想"AI 也不靠谱"，关掉不用了', fb:'<b>这是"不信任 AI"。</b>一次不好，就放弃了这条路。' },
+    { t:'觉得不够好，会接着再问一句', fb:'<b>你已经走在对的路上了。</b>这节课会让你的"第二句"问得更有效。' },
+  ]);
+  return { html:`<div class="card">
+      <span class="tag">开场 · 1 分钟</span>
+      <h2>很多人和 AI 的对话，都停在第一句话上</h2>
+      ${c.html}
+      ${c.answered ? `<div class="fb info"><b>不管你选了哪个，先看一个事实：</b>
+        A 和 B 看起来态度相反，一个太信任，一个不信任，但其实做了同一件事：<strong>只和 AI 说了一句话。</strong><br>
+        而真正会用 AI 的人，差距恰恰拉开在第二句话上。</div>` : ''}
+      ${navBtns('继续', 's1', c.answered)}
+    </div>`, bind(r){ bindChoice(r); bindNav(r); } };
+},
+
+s1(){
+  const c = choiceBlock('s1', '新同事很快交回一份初稿，你发现有几处问题。你会怎么做？', [
+    { t:'直接交给老板，反正有了', right:false, fb:'<b>风险很大。</b>初稿里的问题会原样带到老板面前。对 AI 也一样：直接复制，就是把它的问题变成你的问题。' },
+    { t:'认定这个同事不行，以后不找他了', right:false, fb:'<b>代价太高。</b>没有人第一稿就完美。对 AI 也一样：一次不好就放弃，你会错过它真正的价值。' },
+    { t:'指出哪里对、哪里要改、自己真正想要什么，让他出第二稿', right:true, fb:'<b>对。</b>这就是二次对话。对同事你会这样做，对 AI 也应该这样。' },
+  ]);
+  return { html:`<div class="card">
+      <span class="tag">核心观念</span>
+      <h2>第一次回答，只是一次反馈</h2>
+      <p>我们习惯把 AI 当答题机：输入问题，输出答案，好就用，不好就换。先换个场景想一想：</p>
+      ${c.html}
+      ${c.answered ? `<div class="quote"><strong>二次对话</strong>，就是把 AI 的第一次回答当作反馈，读懂它，再往前推一步。<br>
+        <span class="muted">"二次"不是只聊两轮，而是一种方式：每一次回答，都是下一次对话的起点。</span></div>` : ''}
+      ${navBtns('继续', 's2', c.answered)}
+    </div>`, bind(r){ bindChoice(r); bindNav(r); } };
+},
+
+s2(){
+  const KINDS = ['你自己没想清楚','AI 理解偏了','AI 答错了'];
+  const ITEMS = [
+    { q:'你问"我该怎么提升自己？"，AI 给了十条通用建议，看完你也不知道该做哪条。', a:0,
+      why:'问题在你脑子里还只是一个模糊的感觉，背后藏着很多没想清楚的小问题。' },
+    { q:'你说"帮我写个报告"，AI 写了一篇行业综述，可你要的其实是本周工作汇报。', a:1,
+      why:'它不知道你的背景和场景，只能按最常见的情况去理解"报告"。' },
+    { q:'AI 一本正经地告诉你某项规定的具体条款和年份，你一查，根本不是这样。', a:2,
+      why:'大模型会自信地给出错误信息，尤其在数字、专业细节和规则上。' },
+  ];
+  const allDone = ITEMS.every((_,i)=>S.cls[i]!==undefined);
+  return { html:`<div class="card">
+      <span class="tag">判断练习</span>
+      <h2>为什么第一次回答，注定不够好？</h2>
+      <p>第一次不够好是常态，不是意外，原因通常有三种。判断下面三种情况，各属于哪一种：</p>
+      ${ITEMS.map((it,i)=>{
+        const p = S.cls[i];
+        return `<div class="cls"><div class="q">${i+1}. ${it.q}</div>
+          <div class="chips">${KINDS.map((k,j)=>{
+            let c=''; if(p!==undefined){ if(j===it.a) c='right'; else if(j===p) c='wrong'; }
+            return `<button class="chip ${c}" data-cls="${i}" data-j="${j}" ${p!==undefined?'disabled':''}>${k}</button>`;
+          }).join('')}</div>
+          ${p!==undefined?`<div class="muted" style="margin-top:8px">${p===it.a?'✓ ':'正确答案是"'+KINDS[it.a]+'"。'}${it.why}</div>`:''}
+        </div>`;}).join('')}
+      ${allDone ? `<div class="fb info"><b>所以，二次对话有两个方向：</b>
+        前两种情况，更多是<strong>向内</strong>：借助 AI 的反馈，让自己想清楚。<br>
+        第三种情况，更多是<strong>向外</strong>：指出 AI 的问题，让它改对。</div>` : ''}
+      ${navBtns('去看真实案例', 's3', allDone)}
+    </div>`,
+    bind(r){
+      r.querySelectorAll('[data-cls]').forEach(b=>b.addEventListener('click',()=>{ S.cls[b.dataset.cls]=+b.dataset.j; save(); render(); }));
+      bindNav(r);
+    } };
+},
+
+/* ---------- S3：案例分支 ---------- */
+s3(){
+  if(S.caseView) return CASES[S.caseView].view();
+  const n = Object.keys(S.cases).length;
+  return { html:`<div class="card">
+      <span class="tag">分支 · 选一个案例走进去</span>
+      <h2>同样是第二句话，三个人遇到的情况不一样</h2>
+      <p>每个案例里，对话都会在关键处停下来，问你：<strong>"如果是你，第二句会怎么说？"</strong>建议至少走两个。</p>
+      <div class="cases">
+        ${Object.entries(CASES).map(([k,c])=>`<button class="case" data-case="${k}">
+          ${S.cases[k]?'<span class="ok">已完成</span>':''}
+          <div class="who">${c.who}</div><div class="role">${c.role}</div><div class="dir">${c.dir}</div></button>`).join('')}
+      </div>
+      ${n===0?'<p class="muted">完成至少一个案例后可以继续。</p>':n===1?'<p class="muted">已完成 1 个，建议再走一个，看看另一个方向。</p>':''}
+      ${navBtns('继续', 's4', n>=1)}
+    </div>`,
+    bind(r){
+      r.querySelectorAll('[data-case]').forEach(b=>b.addEventListener('click',()=>{ S.caseView=b.dataset.case; save(); render(); window.scrollTo({top:0}); }));
+      bindNav(r);
+    } };
+},
+
+/* ---------- S4：工具卡 ---------- */
+s4(){
+  return { html:`<div class="card">
+      <span class="tag">工具卡 · 实操时会用到</span>
+      <h2>不知道第二句问什么？用这两张卡</h2>
+      <div class="tools">
+        <div class="tool"><h4>向内：五种追问</h4><ol>
+          <li><strong>问原因</strong>：为什么这么说？依据是什么？</li>
+          <li><strong>问可能</strong>：还有别的解释或做法吗？</li>
+          <li><strong>问遗漏</strong>：我忽略了什么？最大风险在哪？</li>
+          <li><strong>问自己</strong>：结合我的情况，这意味着什么？</li>
+          <li><strong>问行动</strong>：第一步具体做什么？</li></ol>
+          <p class="muted" style="margin:10px 0 0">另外两个动作：<strong>让 AI 反过来问你</strong>；<strong>让 AI 换个角色</strong>来看。</p></div>
+        <div class="tool"><h4>向外：纠错三步</h4><ol>
+          <li><strong>指出哪里错</strong>：具体到哪一句、哪个数字，不只说"不对"。</li>
+          <li><strong>说明为什么错</strong>：给出你的依据、经验或正确信息。</li>
+          <li><strong>要求重新核对</strong>：让它区分事实和推测，说明来源。</li></ol>
+          <p class="muted" style="margin:10px 0 0">最后：真正重要的信息，要拿到真实世界里去核实。</p></div>
+      </div>
+      <div class="fb no"><b>⚠ 误区：把"再详细一点"当成二次对话</b>
+        "再详细一点""专业一点""再来一版"，这些话背后没有判断，只是让 AI 换个样子重来，碰运气。真正的第二句，每一句都带着你的判断。</div>
+      ${navBtns('开始实操', 's5')}
+    </div>`, bind: bindNav };
+},
+
+/* ---------- S5：实操①向内追问 ---------- */
+s5(){
+  const W = S.inward;
+  const types = W.types;
+  const ok = types.length >= 2;
+  const goal = ASK_TYPES.map(t=>`<span class="${types.includes(t.k)?'on':''}">${types.includes(t.k)?'✓ ':''}${t.k}</span>`).join('');
+  return { html:`<div class="card">
+      <span class="tag">实操① · 向内追问</span>
+      <h2>拿你自己的一个真问题，和 AI 多聊几句</h2>
+      <p>${W.started
+        ? '这个回答<strong>没有错</strong>，但对你有用吗？读完它，问问自己：<strong>它让我产生了什么新问题？</strong>然后用至少<strong>两种</strong>不同的追问，把对话往前推。'
+        : '先输入一个你最近真的想问 AI 的问题（学习、工作、找方向都可以），AI 会先给你一个"标准答案"。'}</p>
+      <div class="goal">${goal}</div>
+      <div class="chat" id="chat">${renderChat(W.msgs)}</div>
+      ${W.started ? `<div class="hints"><span class="muted">卡住了？点一下插入开头：</span>
+        ${ASK_TYPES.map((t,i)=>`<button class="chip" data-hint="${i}">${t.k}</button>`).join('')}</div>` : ''}
+      <div class="composer"><textarea id="inp" rows="2" placeholder="${W.started?'写下你的第二句…':'例如：我想转行做产品经理，应该怎么准备？'}"></textarea>
+        <button class="btn pri" id="send">发送</button></div>
+      <div class="sim" style="margin-top:6px">说明：这里的 AI 是练习用的模拟对话，按规则识别你的追问方式。</div>
+      ${navBtns(ok?'完成，去下一个实操':'达成两种追问后继续', 's6', ok,
+        W.started && !ok ? '<button class="link" data-next="s6" style="margin-right:14px">先跳过</button>' : '')}
+    </div>`,
+    bind(r){
+      bindNav(r);
+      r.querySelectorAll('[data-hint]').forEach(b=>b.addEventListener('click',()=>{ const t=$('#inp'); t.value=ASK_TYPES[b.dataset.hint].starter; t.focus(); }));
+      bindComposer(r, text => {
+        if(!W.started){
+          W.started = true; W.q = text;
+          W.msgs.push({r:'u',t:text});
+          return { reply: genericAnswer(text), after(){ save(); render(); } };
+        }
+        const hit = ASK_TYPES.filter(t=>t.re.test(text));
+        const mis = MISUSE_RE.test(text);
+        const tags = [];
+        hit.forEach(t=>{ tags.push({g:1,t:'✓ '+t.k}); if(!types.includes(t.k)) types.push(t.k); });
+        if(mis){ W.misuse++; tags.push({g:0,t:'⚠ 误区：没带判断'}); }
+        if(!hit.length && !mis) tags.push({g:0,t:'未识别为五种追问之一'});
+        W.msgs.push({r:'u',t:text,tags});
+        let reply;
+        if(hit.length) reply = hit[0].reply;
+        else if(mis) reply = genericAnswer(W.q||'这个问题').replace('一般可以从以下几个方面考虑','好的，我再展开一点，一般可以从以下几个方面考虑');
+        else reply = '能再具体说说吗？比如你想知道原因、想看别的做法，还是想知道第一步怎么开始？';
+        return { reply, after(){ save(); render(); } };
+      }, W);
+    } };
+},
+
+/* ---------- S6：实操②向外纠正 ---------- */
+s6(){
+  const O = S.outward;
+  const found = O.found.length;
+  const ok = found >= 2 && O.why && O.check;
+  const head = { r:'a', planted:true };
+  return { html:`<div class="card">
+      <span class="tag">实操② · 向外纠正</span>
+      <h2>这份回答里藏着几处错误，找出来，让 AI 改对</h2>
+      <p>你让 AI <strong>"${PLANTED.task}"</strong>，它很快给了下面这段话。读一遍，用<strong>纠错三步</strong>告诉它哪里不对。</p>
+      <div class="goal">
+        <span class="${found>=2?'on':''}">已发现错误 ${found} / 3</span>
+        <span class="${O.why?'on':''}">${O.why?'✓ ':''}说明为什么错</span>
+        <span class="${O.check?'on':''}">${O.check?'✓ ':''}要求重新核对</span>
+      </div>
+      <div class="chat" id="chat">${renderChat([head, ...O.msgs])}</div>
+      <div class="composer"><textarea id="inp" rows="2" placeholder="例如：你第二句说……我认为不对，因为……请重新核对这一段。"></textarea>
+        <button class="btn pri" id="send">发送</button></div>
+      <div class="sim" style="margin-top:6px">说明：这里的 AI 是练习用的模拟对话，按规则识别你是否指出了错误。</div>
+      ${navBtns(ok?'完成，去看点评':'至少找出 2 处并完成三步后继续', 's7', ok,
+        O.msgs.length && !ok ? '<button class="link" data-next="s7" style="margin-right:14px">先跳过，去看点评</button>' : '')}
+    </div>`,
+    bind(r){
+      bindNav(r);
+      bindComposer(r, text => {
+        const newly = Object.entries(PLANTED.errors).filter(([k,e])=>e.re.test(text) && !O.found.includes(k));
+        const any = Object.values(PLANTED.errors).some(e=>e.re.test(text));
+        const why = PLANTED.whyRe.test(text), chk = PLANTED.checkRe.test(text);
+        const tags = [];
+        newly.forEach(([k])=>{ O.found.push(k); });
+        if(any) tags.push({g:1,t:'✓ 指出了位置'}); else { O.vague++; tags.push({g:0,t:'⚠ 没指出具体哪一句'}); }
+        if(why){ O.why=true; tags.push({g:1,t:'✓ 说明了为什么'}); }
+        if(chk){ O.check=true; tags.push({g:1,t:'✓ 要求核对'}); }
+        O.msgs.push({r:'u',t:text,tags});
+        let reply;
+        if(newly.length){
+          reply = '你说得对，我重新核对了一下：\n' + newly.map(([,e])=>'· '+e.fix).join('\n')
+            + (chk ? '\n\n以上计算是事实，可以自己验算；理财风险相关的说法建议以正规金融机构的说明为准。' : '');
+        } else if(any){
+          reply = '这一处你之前已经指出过了，我已经更正。还有其他问题吗？';
+        } else {
+          reply = '抱歉，我不太确定你指的是哪一部分。能具体说一下是哪一句、哪个数字有问题吗？';
+        }
+        return { reply, after(){ save(); render(); } };
+      }, O);
+    } };
+},
+
+/* ---------- S7：教练点评（分支：通过 / 回炉） ---------- */
+s7(){
+  const W=S.inward, O=S.outward;
+  const deep = Math.min(3, W.types.length);                         // 深化：用了几种追问
+  const judge = Math.min(3, O.found.length);                       // 判断：找出几处错误
+  const feed = (O.why?1:0) + (O.check?1:0) + (W.misuse===0 && O.vague===0 && (W.msgs.length||O.msgs.length) ? 1:0); // 反馈：说得清楚
+  const pass = deep>=2 && judge>=2 && feed>=2;
+  const star = n => '★'.repeat(n)+'☆'.repeat(3-n);
+  const pts = [];
+  if(W.types.length) pts.push(`你用了 <strong>${W.types.join('、')}</strong> ${W.types.length} 种追问。${W.types.length>=3?'角度很丰富。':W.types.length===2?'不错，下次试试"问遗漏"或"让 AI 反过来问你"。':'只用了一种，对话还没真正推开。'}`);
+  else pts.push('实操①还没有追问，二次对话最关键的"第二句"还没出现。');
+  if(W.misuse) pts.push(`有 <strong>${W.misuse} 次</strong>用了"再详细一点 / 再来一版"这类说法，这句话背后没有你的判断，只是在碰运气。`);
+  const missed = Object.entries(PLANTED.errors).filter(([k])=>!O.found.includes(k)).map(([,e])=>e.name);
+  pts.push(`实操②找出了 <strong>${O.found.length} / 3</strong> 处错误。${missed.length?'没发现的是：'+missed.map(m=>'「'+m+'」').join('、')+'。':'全部找到了。'}`);
+  if(missed.some(m=>m.includes('保证'))) pts.push('"保证不亏损"这类<strong>绝对化</strong>的说法最需要警惕，它不是算错，而是常识性的误导。');
+  if(!O.why) pts.push('纠正时没有说明<strong>为什么错</strong>，AI 不知道正确的依据，改出来的也可能还是错的。');
+  if(!O.check) pts.push('没有要求 AI <strong>重新核对或说明依据</strong>，这一步能让它区分事实和推测。');
+  if(O.vague) pts.push(`有 ${O.vague} 次只说了"不对"，没指出具体哪一句，AI 很难改到点上。`);
+  return { html:`<div class="card">
+      <span class="tag">教练点评</span>
+      <h2>${pass?'通过！你的"第二句"已经带着判断了':'还差一点，看看卡在哪一步'}</h2>
+      <p>二次对话里，真正起作用的是人在两句话之间做的三件事：</p>
+      <div class="score">
+        <div><div class="n">${star(judge)}</div><div class="l">判断<br><span class="muted">对不对？是不是我要的？</span></div></div>
+        <div><div class="n">${star(deep)}</div><div class="l">深化<br><span class="muted">它让我想到了什么新问题？</span></div></div>
+        <div><div class="n">${star(feed)}</div><div class="l">反馈<br><span class="muted">把判断清楚地告诉 AI</span></div></div>
+      </div>
+      <h3>具体点评</h3>
+      <ul class="pts">${pts.map(p=>`<li>${p}</li>`).join('')}</ul>
+      <p class="sim">说明：评分按规则根据你在两个实操里的表现给出。</p>
+      ${pass ? navBtns('继续', 's8') : `<div class="nav"><button class="btn" data-back>← 上一步</button><span>
+          ${deep<2||feed<2?'<button class="btn" data-redo="s5" style="margin-right:8px">回到实操①</button>':''}
+          ${judge<2||feed<2?'<button class="btn" data-redo="s6" style="margin-right:8px">回到实操②</button>':''}
+          <button class="link" data-next="s8">仍然继续</button></span></div>`}
+    </div>`,
+    bind(r){ bindNav(r); r.querySelectorAll('[data-redo]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.redo))); } };
+},
+
+/* ---------- S8：反思 ---------- */
+s8(){
+  return { html:`<div class="card">
+      <span class="tag">反思 · 练完再读</span>
+      <h2>不是所有人，都能从 AI 身上成长</h2>
+      <p>有一句不太好听的话：<strong>如果一个人没有能力判断 AI 回答的对错，或者要求 AI 必须百分之百正确，那 AI 无法让他成长。</strong></p>
+      <p>第一种人 AI 说什么信什么，用得越多，可能错得越多；第二种人 AI 错一次就放弃，实际上是把判断的责任全推给了 AI。两种人本质一样：<strong>都不愿意，或者没有能力，自己做判断。</strong></p>
+      <div class="quote">AI 是一个放大器：你有判断力，它放大你的判断力；你有专业，它放大你的专业；你什么都不想判断，它放大的就是你的依赖。</div>
+      <p>好消息是：判断力不是用 AI 之前的门槛，而是在用 AI 的过程中长出来的。刚才你每找出一处错误，就是在练它。</p>
+      <h3>写一句给自己</h3>
+      <p class="muted">刚才的实操里，哪一刻你最需要"自己判断"？（保存在你的学习记录里）</p>
+      <textarea class="note" id="note" placeholder="例如：看到"保证不亏损"时，我第一反应差点就信了……">${esc(S.reflect)}</textarea>
+      ${navBtns('继续', 's9')}
+    </div>`,
+    bind(r){ bindNav(r); r.querySelector('#note').addEventListener('input',e=>{ S.reflect=e.target.value; save(); }); } };
+},
+
+/* ---------- S9：小结 ---------- */
+s9(){
+  const all = S.done.includes('s9');
+  return { html:`<div class="card">
+      <span class="tag">小结</span>
+      <h2>AI 的第一次回答，决定的是起点；你的第二句话，决定的是终点</h2>
+      <h3>这节课你带走三件事</h3>
+      <ul class="pts">
+        <li>第一次回答是<strong>反馈</strong>，不是答案。</li>
+        <li>二次对话有两个方向：<strong>向内</strong>让自己想清楚（五种追问），<strong>向外</strong>让 AI 改对（纠错三步）。</li>
+        <li>真正起作用的，是你在两句话之间做的<strong>判断、深化、反馈</strong>。</li>
+      </ul>
+      <h3>带走练习（课后 15 分钟）</h3>
+      <div class="tool">
+        <p>找一个你<strong>最近真的问过 AI</strong> 的问题，重新打开那次对话：</p>
+        <ol><li><strong>向内追问一次</strong>：它让我产生了什么新问题？用五种追问至少再问一句。</li>
+          <li><strong>向外纠正一次</strong>：找出不对、不准或理解偏的地方，按三步告诉它。</li></ol>
+        <p style="margin:10px 0 0">做完比较：第二次的结果有什么不同？你自己的想法又有什么变化？</p>
+      </div>
+      <div class="fb info"><b>下一课预告：第5课 · 你缺的不是 Prompt，是问题意识</b>今天你学会了"第二句怎么问"。下一课回答：<strong>一开始，到底该问什么？</strong></div>
+      <div class="nav"><button class="btn" data-back>← 上一步</button>
+        <span>${all?'<a class="btn" href="/course.html?id=ai-intro" style="text-decoration:none;margin-right:8px">回到课程地图</a>':''}<button class="btn pri" id="fin">${all?'✓ 本课已完成':'完成本课'}</button></span></div>
+    </div>`,
+    bind(r){ bindNav(r); r.querySelector('#fin').addEventListener('click',()=>{ if(!S.done.includes('s9')) S.done.push('s9'); clearTimeout(saveTimer); saveTimer=null; put({ state:S, done:true }); render(); }); } };
+},
+};
+
+/* =========================================================
+ * 案例分支：对话回放 + 停顿提问
+ * ========================================================= */
+function replay(key, rounds, ending){
+  // rounds: [{msgs:[...], ask:{q, opts}}]，回答完一个 ask 才显示下一轮
+  let html = '', allAnswered = true;
+  for(let i=0;i<rounds.length;i++){
+    const r = rounds[i];
+    html += `<div class="chat">${renderChat(r.msgs)}</div>`;
+    if(r.ask){
+      const c = choiceBlock(`${key}-${i}`, r.ask.q, r.ask.opts);
+      html += `<div style="margin:6px 0 18px">${c.html}</div>`;
+      if(!c.answered){ allAnswered = false; break; }
+    }
+  }
+  if(allAnswered) html += `<div class="fb ok"><b>${ending.title}</b>${ending.body}</div>`;
+  return { html, allAnswered };
+}
+function caseShell(key, c, body){
+  const done = body.allAnswered;
+  if(done && !S.cases[key]){ S.cases[key]=1; save(); }
+  return { html:`<div class="card">
+      <span class="tag">案例 · ${c.who}（${c.dir}）</span>
+      <h2>${c.title}</h2>
+      <p>${c.intro}</p>
+      ${body.html}
+      <div class="nav"><button class="btn" data-caseback>← 返回案例选择</button>
+        ${done?'<button class="btn pri" data-caseback>完成，返回 →</button>':''}</div>
+    </div>`,
+    bind(r){ bindChoice(r); r.querySelectorAll('[data-caseback]').forEach(b=>b.addEventListener('click',()=>{ S.caseView=null; save(); render(); window.scrollTo({top:0}); })); } };
+}
+const CASES = {
+  xl:{ who:'小林', role:'机械专业大四学生', dir:'向内 · 让自己想清楚',
+    title:'"我是机械专业的，应该找什么工作？"',
+    intro:'小林找工作找得很迷茫，他打开 AI，问了第一句。',
+    view(){ return caseShell('xl', this, replay('xl', [
+      { msgs:[ {r:'u',t:'我是机械专业的，应该找什么工作？',who:'小林'},
+               {r:'a',t:'机械专业常见的就业方向有：\n1. 机械设计工程师\n2. 工艺工程师\n3. 质量工程师\n4. 设备工程师\n5. 技术销售\n6. 实施顾问\n……每个方向都有不错的发展前景。'} ],
+        ask:{ q:'这个回答没错，但这份清单在任何招聘网站都能看到。如果你是小林，第二句会怎么说？', opts:[
+          { t:'"再详细一点。"', right:false, fb:'<b>这是误区一。</b>AI 会把清单写得更长，但你还是不知道哪个适合你。这句话里没有你的判断。' },
+          { t:'"技术销售和实施顾问，每天具体在做什么？机械专业应届生做这两个分别有什么优势和短板？"', right:true, fb:'<b>小林就是这么问的。</b>他看着清单，发现自己对这两个岗位有点兴趣，却不知道它们每天在干什么。<strong>AI 的回答没给他答案，却让他看见了自己真正的问题。</strong>' },
+          { t:'"好的，谢谢。"', right:false, fb:'<b>对话停在了第一句。</b>小林大概会觉得"AI 也就这样"。' } ] } },
+      { msgs:[ {r:'a',t:'（AI 介绍了两个岗位的日常工作：都要大量和客户打交道，实施顾问更偏推动项目落地，技术销售更偏讲清方案……）'},
+               {r:'u',t:'我不太清楚自己更适合哪个。你问我几个问题，帮我判断一下。',who:'小林'} ],
+        ask:{ q:'小林这第三句，用的是哪个动作？', opts:[
+          { t:'问原因', right:false, fb:'不是。问原因是"为什么这么说"。' },
+          { t:'让 AI 反过来问你', right:true, fb:'<b>对。</b>当你自己也说不清时，让 AI 来提问，往往比你硬想更快。AI 问了他五个问题，比如"你更享受把方案讲明白，还是把项目推动落地？""能接受经常出差吗？"' },
+          { t:'问行动', right:false, fb:'不是。问行动是"第一步具体做什么"，那是他的下一句。' } ] } },
+      { msgs:[ {r:'u',t:'如果我想去做实施顾问，从现在到毕业还有四个月，我最应该补的是什么？',who:'小林'} ] },
+    ], { title:'四轮对话下来，小林拿到的不是一份岗位清单', body:'而是一个方向、一份准备计划，以及对自己更清楚的认识。<br>每一轮真正起作用的，不是 AI 的回答，而是<strong>小林读完回答后，脑子里冒出来的那个新问题。</strong>AI 的反馈是一面镜子。' })); } },
+
+  lc:{ who:'老陈', role:'十年经验 ERP 顾问', dir:'向外 · 让 AI 改对',
+    title:'AI 给的行业流程里，有一句不对',
+    intro:'老陈要去一家医疗器械企业做 ERP 调研，这个行业他不熟。他让 AI 梳理这类企业的核心业务流程。',
+    view(){
+      const lines = ['医疗器械企业的核心流程包括：研发注册、采购、生产、质检、销售、售后。','产品上市前需完成产品注册或备案。','医疗器械企业的产品在出厂前完成注册即可，销售环节无需额外的资质管理。','生产过程需要做好质量记录。'];
+      const p = S.choice['lc-pick'];
+      const pickHtml = `<div class="chat"><div class="msg u"><span class="who">老陈</span>帮我梳理医疗器械企业的核心业务流程。</div>
+        <div class="msg a"><span class="who">AI</span>${lines.map((l,i)=>`<span class="line ${p===undefined?'pick':''} ${p!==undefined&&i===2?'bad':''} ${p!==undefined&&p===i&&i!==2?'miss':''}" data-pick="${i}">${esc(l)}</span>`).join('')}</div></div>
+        <p class="big">老陈直觉觉得有一句不对。${p===undefined?'<strong>点击你认为有问题的那一句。</strong>':''}</p>
+        ${p!==undefined?`<div class="fb ${p===2?'ok':'no'}">${p===2?'<b>找到了。</b>':'<b>这一句问题不大，有问题的是标红的那句。</b>'}医疗器械是强监管行业，经销商通常也需要经营资质，销售环节还有追溯要求。老陈虽然不熟这个行业，但十年经验让他知道：<strong>强监管行业，不会这么简单。</strong></div>`:''}`;
+      let body = { html: pickHtml, allAnswered:false };
+      if(p!==undefined){
+        const rest = replay('lc', [
+          { msgs:[], ask:{ q:'发现问题后，老陈该怎么回？', opts:[
+            { t:'"不对，重写。"', right:false, fb:'<b>只说了"不对"。</b>AI 不知道错在哪，大概率换个说法再错一次。' },
+            { t:'"你说销售环节无需资质管理，我认为不对。医疗器械属强监管，经销商通常也需要经营资质，还涉及追溯。请重新核对，并区分哪些是明确的监管要求、哪些是你的推测。"', right:true, fb:'<b>老陈就是这么回的，三步齐全：</b>指出哪一句 → 说明为什么 → 要求重新核对并区分事实与推测。' },
+            { t:'"AI 连这都搞错，算了，我自己查。"', right:false, fb:'<b>这是误区三：AI 错一次就放弃。</b>其实这是最有价值的时刻，它正逼你调动专业去判断。' } ] } },
+          { msgs:[ {r:'a',t:'（AI 调整了这部分内容，补上了经营资质、首营审核、购销记录和追溯要求，并把明确规定和推测分开标注。）'} ],
+            ask:{ q:'AI 改对了。老陈接下来最该做什么？', opts:[
+              { t:'直接把这份流程放进调研报告', right:false, fb:'<b>还不够。</b>AI 改过的内容依然要核实，尤其是法规条款。' },
+              { t:'接着问："这些监管要求，对 ERP 的客户主数据、销售订单、批次管理分别有什么影响？"，并把法规条款标出来，去现场找客户质量部门确认', right:true, fb:'<b>对。</b>纠正之后继续深化，问出对自己工作真正有用的东西；重要信息，拿到真实世界里去核实。' } ] } },
+        ], { title:'AI 错了，不代表 AI 不能用', body:'而是需要你告诉它<strong>错在哪里</strong>。AI 帮你缩小范围、理清思路，最终对结果负责的是你。' });
+        body = { html: pickHtml + rest.html, allAnswered: rest.allAnswered };
+      }
+      const v = caseShell('lc', this, body);
+      const b0 = v.bind;
+      v.bind = r => { b0(r); r.querySelectorAll('[data-pick]').forEach(el=>el.addEventListener('click',()=>{ if(S.choice['lc-pick']===undefined){ S.choice['lc-pick']=+el.dataset.pick; save(); render(); } })); };
+      return v;
+    } },
+
+  wz:{ who:'王总', role:'机械设备制造企业副总', dir:'两个方向交织',
+    title:'订单交付为什么越来越慢？',
+    intro:'王总把近半年的订单和生产资料交给 AI，让它分析交付变慢的原因。',
+    view(){ return caseShell('wz', this, replay('wz', [
+      { msgs:[ {r:'u',t:'这是近半年的订单和生产数据，帮我分析交付为什么越来越慢。',who:'王总'},
+               {r:'a',t:'根据数据分析，交付周期变长的主要原因是：生产产能不足。建议考虑增加班次或扩充产线。'} ],
+        ask:{ q:'王总知道，最近两个月产线其实并不满负荷。他应该怎么做？', opts:[
+          { t:'接受结论，开会讨论扩产', right:false, fb:'<b>危险。</b>一个和事实矛盾的结论，可能带来一笔错误的投资。' },
+          { t:'指出矛盾："最近两个月产线并不满负荷，产能不足的结论和事实不符。请重新分析，说明你依据的是哪些数据。"', right:true, fb:'<b>对，这是向外纠正。</b>王总用他对企业的了解，指出了 AI 的问题。' },
+          { t:'换一个 AI 再问一遍', right:false, fb:'<b>交叉验证本身没错</b>，但王总手里已经有反例了。不把这个事实告诉 AI，换几个 AI 也可能得出同样的结论。' } ] } },
+      { msgs:[ {r:'a',t:'重新分析后发现：各部门对"交付周期"的计算口径不一致。销售从接单算起，生产从投产算起，中间的订单评审和备料等待时间没有人统计，而这一段在半年里明显变长了。'} ],
+        ask:{ q:'看到这个结果，王总意识到：他一直以为的问题，可能根本不是真正的问题。这属于哪个方向？', opts:[
+          { t:'向外：让 AI 改对', right:false, fb:'上一步是向外。这一步，变化发生在王总自己的认识上。' },
+          { t:'向内：借助 AI 的反馈，让自己想清楚', right:true, fb:'<b>对。</b>他原本的问题是"生产为什么慢"，现在变成了"接单到投产之间发生了什么"。问题本身变了。' } ] } },
+    ], { title:'一次纠错，带来了一次新的认识', body:'真实工作中，两个方向常常交织在一起。<strong>纠正 AI 的过程，常常也是自己想清楚的过程。</strong>' })); } },
+};
+
+/* =========================================================
+ * 对话渲染与模拟回复
+ * ========================================================= */
+function renderChat(msgs){
+  return msgs.map(m=>{
+    if(m.planted) return `<div class="msg a"><span class="who">AI</span>${PLANTED.lines.map(l=>{
+      const hit = l.err && S.outward.found.includes(l.err);
+      return `<span class="line ${hit?'bad':''}">${esc(l.t)}</span>`; }).join('')}</div>`;
+    const who = m.r==='u' ? (m.who||'你') : 'AI';
+    let h = `<div class="msg ${m.r}"><span class="who">${esc(who)}</span>${esc(m.t)}</div>`;
+    if(m.tags) h += `<div class="msgtag">${m.tags.map(t=>`<span class="${t.g?'g':'w'}">${esc(t.t)}</span>`).join('')}</div>`;
+    return h;
+  }).join('');
+}
+function genericAnswer(q){
+  return `关于「${q}」，一般可以从以下几个方面考虑：\n1. 明确目标：想清楚自己真正想要什么。\n2. 收集信息：多了解相关领域的情况。\n3. 制定计划：把大目标拆成小步骤。\n4. 执行与复盘：边做边调整。\n5. 寻求帮助：向有经验的人请教。\n这些方法适用于大多数情况，你可以根据实际情况灵活选择。`;
+}
+function bindComposer(root, handler, store){
+  const inp = root.querySelector('#inp'), btn = root.querySelector('#send');
+  const send = () => {
+    const text = inp.value.trim(); if(!text) return;
+    const { reply, after } = handler(text);
+    inp.value=''; btn.disabled = true;
+    const chat = root.querySelector('#chat');
+    chat.innerHTML = renderChat(S.cur==='s6' ? [{r:'a',planted:true}, ...store.msgs] : store.msgs) + '<div class="typing">AI 正在输入…</div>';
+    setTimeout(()=>{ store.msgs.push({r:'a',t:reply}); after(); setTimeout(()=>$('#chat')?.lastElementChild?.scrollIntoView({behavior:'smooth',block:'nearest'}),50); }, 700);
+  };
+  btn.addEventListener('click', send);
+  inp.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); send(); } });
+}
+
+/* =========================================================
+ * 渲染
+ * ========================================================= */
+function render(){
+  const ci = idx(S.cur);
+  const reach = Math.max(ci, ...S.done.map(idx).map(i=>i+1));
+  $('#steps').innerHTML = STEPS.map((s,i)=>`<li class="${S.done.includes(s.id)?'done':''} ${s.id===S.cur?'cur':''} ${i<=reach?'can':''}" data-go="${i<=reach?s.id:''}">
+      <span class="dot">${S.done.includes(s.id)?'✓':i}</span><span class="txt">${s.label}${s.sub?`<span class="sub">${s.sub}</span>`:''}</span></li>`).join('');
+  $('#steps').querySelectorAll('[data-go]').forEach(li=>li.dataset.go && li.addEventListener('click',()=>go(li.dataset.go)));
+  $('#bar').style.width = (S.done.length/STEPS.length*100)+'%';
+  const v = VIEWS[S.cur]();
+  const view = $('#view'); view.innerHTML = v.html; v.bind && v.bind(view);
+}
+$('#reset').addEventListener('click',()=>{
+  if(!confirm('确定清空本课的练习记录，从头开始？（已完成标记会保留）')) return;
+  clearTimeout(saveTimer); saveTimer = null;
+  saving = saving.then(() => fetch(API + '?mode=interactive', { method:'DELETE', credentials:'same-origin' })).catch(()=>{});
+  S = fresh(); render();
+});
+(async () => {
+  $('#view').innerHTML = '<div class="card"><p class="muted">正在载入你的学习记录…</p></div>';
+  try{
+    const r = await fetch(API + '?mode=interactive', { credentials:'same-origin' });
+    if(r.status === 401){ location.href = '/lesson.html?course=ai-intro&lesson=l4&login=1'; return; }
+    const d = r.ok ? await r.json() : null;
+    if(d && d.state && typeof d.state === 'object') S = Object.assign(fresh(), d.state);
+    if(!r.ok) saveErr('学习记录载入失败，本次进度可能无法保存');
+  }catch{ saveErr('学习记录载入失败，本次进度可能无法保存'); }
+  if(!STEPS.some(x => x.id === S.cur)) S.cur = 's0';
+  render();
+})();
+</script>
+</body>
+</html>

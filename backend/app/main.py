@@ -5,6 +5,7 @@
 - /api/files          会话工作区文件下载 / 上传
 - /api/skills         技能管理（列表、查看、创建、编辑、删除、导入导出、复制）
 - /api/kb             知识库管理（创建、上传文档、检索测试）；对话时按会话选择知识库
+- /api/courses        内置课程（课程目录公开；故事页 / 正文 / 视频 / 进度需登录）
 - /api/admin          管理员：审核并发布访客技能、公开知识库（需 X-Admin-Token）
 """
 import asyncio
@@ -22,10 +23,10 @@ from urllib.parse import quote
 
 import yaml
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
-from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import agent, auth, config, db, embeddings, knowledge, llm, models, posts, ratelimit, settings, skills, workspace
+from . import agent, auth, config, courses, db, embeddings, knowledge, llm, models, posts, ratelimit, settings, skills, workspace
 from .ratelimit import QuotaError
 from .skills import SkillError
 from .tools import describe_call
@@ -147,6 +148,11 @@ async def _auth_err(_: Request, e: auth.AuthError):
 
 @app.exception_handler(posts.PostError)
 async def _post_err(_: Request, e: posts.PostError):
+    return JSONResponse({"detail": str(e)}, status_code=e.status)
+
+
+@app.exception_handler(courses.CourseError)
+async def _course_err(_: Request, e: courses.CourseError):
     return JSONResponse({"detail": str(e)}, status_code=e.status)
 
 
@@ -1235,3 +1241,64 @@ async def admin_delete_card(card_id: int):
         raise HTTPException(404, "卡片不存在")
     db.delete_card(card_id)
     return {"ok": True}
+
+
+# ---------------- 内置课程 ----------------
+# 未登录：只能看课程列表与课程目录（元信息）；故事页、正文、视频、工具卡要点与进度需登录。
+def _owner_or_none(request: Request) -> Optional[str]:
+    uid = current_uid(request)
+    return auth.owner_of_user(uid) if uid is not None and db.user_get(uid) else None
+
+
+class CourseProgressReq(BaseModel):
+    mode: str = Field(..., max_length=20)
+    done: Optional[bool] = None
+    state: Optional[Any] = None
+
+
+@app.get("/api/courses")
+async def course_list():
+    return {"courses": courses.list_public()}
+
+
+@app.get("/api/courses/{cid}")
+async def course_detail(cid: str, request: Request):
+    return courses.detail(cid, _owner_or_none(request))
+
+
+@app.get("/api/courses/{cid}/lessons/{lid}/text")
+async def course_lesson_text(cid: str, lid: str, request: Request):
+    require_user(request)
+    return {"markdown": courses.lesson_text(cid, lid)}
+
+
+@app.get("/api/courses/{cid}/lessons/{lid}/story")
+async def course_lesson_story(cid: str, lid: str, request: Request):
+    # 故事页内容片段（由 site/story.html 的固定渲染器播放）+ 当前账号的阅读进度
+    owner, _ = require_user(request)
+    return {"html": courses.lesson_story(cid, lid), "progress": courses.get_state(owner, cid, lid, "story")}
+
+
+@app.get("/api/courses/{cid}/lessons/{lid}/video")
+async def course_lesson_video(cid: str, lid: str, request: Request):
+    require_user(request)
+    f, mime = courses.video_file(cid, lid)
+    return FileResponse(f, media_type=mime, headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.get("/api/courses/{cid}/lessons/{lid}/progress")
+async def course_progress_get(cid: str, lid: str, mode: str, request: Request):
+    owner, _ = require_user(request)
+    return courses.get_state(owner, cid, lid, mode)
+
+
+@app.put("/api/courses/{cid}/lessons/{lid}/progress")
+async def course_progress_put(cid: str, lid: str, req: CourseProgressReq, request: Request):
+    owner, _ = require_user(request)
+    return courses.save(owner, cid, lid, req.mode, req.done, req.state)
+
+
+@app.delete("/api/courses/{cid}/lessons/{lid}/progress")
+async def course_progress_reset(cid: str, lid: str, mode: str, request: Request):
+    owner, _ = require_user(request)
+    return courses.reset_state(owner, cid, lid, mode)

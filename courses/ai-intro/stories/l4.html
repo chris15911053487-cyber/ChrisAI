@@ -1,0 +1,291 @@
+<!-- AI入门 · 第4课 · 故事页
+     原始文档：lessons/l4.md（二次对话）。由 site/story.js 播放，写法见 stories/README.md。
+     上线前：python -m app.storycheck courses/ai-intro/stories/l4.html -->
+<header class="story-meta" data-stages="看清问题|掌握方法|落地成长">
+  <div class="t">AI用得好不好，<br>差在<em>第二句话</em></div>
+  <div class="s">二次对话 · 3 个阶段 · 8 章</div>
+</header>
+
+<!-- ================= 开场 ================= -->
+<div class="chapter" data-title="开场" data-stage="0">
+  <section class="beat st">
+    <div class="small reveal">先回想一下</div>
+    <h2 class="reveal">你上一次问AI，<br>一共说了几句话？</h2>
+    <div class="opts reveal" data-quick>
+      <button class="opt" type="button" data-r="大多数人都是这样。问一句，拿到回答，结束。">1 句</button>
+      <button class="opt" type="button" data-r="不错。那第二句，是带着判断说的，还是“再来一版”？">2～3 句</button>
+      <button class="opt" type="button" data-r="很好。接下来看看，哪些句子真的把对话往前推了。">更多</button>
+    </div>
+    <div class="reply" aria-live="polite"></div>
+  </section>
+  <section class="beat st">
+    <div class="small reveal">AI入门 · 二次对话</div>
+    <h1 class="reveal">AI用得好不好，<br>差在<em>第二句话</em></h1>
+  </section>
+</div>
+
+<!-- ================= 01 困境 ================= -->
+<div class="chapter" data-no="01" data-title="困境" data-stage="1" data-desc="很多人和AI的对话，都停在第一句话上">
+  <section class="scene">
+    <div class="stage">
+      <div class="phone">
+        <div class="phone-hd"><b>和AI的对话</b><span class="count">你说了 0 句</span></div>
+        <div class="body">
+          <div class="m u" data-i="0">帮我写一份新产品上市的推广方案。</div>
+          <div class="m a" data-i="1">好的，以下是完整方案：
+<br>1. 市场分析：目标市场规模与竞品格局……<br>2. 目标人群：25–40 岁城市白领……<br>3. 渠道策略：线上种草 + 线下体验……<br><span class="bad-s">4. 预算建议：首年投入为预计营收的 300%……</span>
+          </div>
+          <div class="m sys" data-i="2">已复制 → 粘贴 → 交差</div>
+          <div class="m sys end" data-i="3">“AI也不靠谱。” 已关闭</div>
+        </div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step st" data-show="0"><div class="card">你想让AI帮你写一份推广方案。<br>问题已经写在输入框里了——<strong>点「发送」</strong>把它发出去。</div></div>
+      <div class="step st" data-show="0,1"><div class="card">几秒钟，AI给出一份<strong>看起来很完整</strong>的答案。</div></div>
+      <div class="step st" data-show="0,1,2"><div class="card"><div class="who">结局一 · 太信任</div>复制，粘贴，交差。<br>答案是不是真正需要的，没来得及想。</div></div>
+      <div class="step st" data-show="0,1,3" data-fx="bad"><div class="card"><div class="who">结局二 · 不信任</div>你发现有一句明显不对，于是得出结论：AI也不靠谱。关掉。</div></div>
+      <div class="step st" data-show="0,1" data-fx="pause"><div class="card">一个太信任，一个不信任。<br>但他们做了同一件事——<br><strong>只和AI说了一句话。</strong></div></div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= 02 洞察 ================= -->
+<div class="chapter" data-no="02" data-title="洞察" data-stage="1" data-desc="第一次回答，只是一次反馈，不是答案">
+  <section class="beat st">
+    <h2 class="reveal">第一次回答，<br>不是答案，是<em>反馈</em>。</h2>
+    <p class="reveal">就像新同事交来的初稿。你不会直接交给老板，也不会因为有错就认定他不行。<br>你会看一遍，然后说：“方向对，这里要改；这个数据不对，再核一下。”</p>
+  </section>
+  <section class="scene">
+    <div class="stage">
+      <div class="board" aria-hidden="true">
+        <div class="b-hd">第一次回答不够好，原因通常有三个</div>
+        <div class="tile" data-i="r1" data-dir="in"><b>① 你自己还没想清楚</b><span>“该找什么工作”背后，藏着十几个问题</span></div>
+        <div class="tile" data-i="r2" data-dir="in"><b>② AI理解偏了</b><span>你说的“慢”，和它理解的“慢”不是一回事</span></div>
+        <div class="tile" data-i="r3" data-dir="out"><b>③ AI答错了</b><span>数字、专业细节、行业规则，一本正经地错</span></div>
+        <div class="b-hd gap">第二句话的两个方向</div>
+        <div class="dirs"><div class="dir in" data-i="d1">向内 · 让自己想清楚</div><div class="dir out" data-i="d2">向外 · 让AI改对</div></div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step st" data-show="r1"><div class="card">第一次回答不够好，是<strong>常态</strong>，不是意外。原因通常有三个。<br><br>第一个：<strong>你自己还没想清楚。</strong>擅长什么、喜欢什么、专业有什么价值……你没想清楚，AI自然答不到点上。</div></div>
+      <div class="step st" data-show="r1,r2"><div class="card">第二个：<strong>AI理解偏了。</strong><br>它不知道你的背景、行业、老板的脾气，只能按最常见的情况去理解。</div></div>
+      <div class="step st" data-show="r1,r2,r3"><div class="card">第三个：<strong>AI答错了。</strong><br>这是大模型的特点，短期内不会完全消失。</div></div>
+      <div class="step st" data-show="r1,r2,r3,d1,d2" data-fx="split"><div class="card">所以第二句话有两个方向：<br><strong class="tag-in">向内</strong>——借助反馈，让自己想清楚；<br><strong class="tag-out">向外</strong>——指出问题，让AI改对。<br><br>接下来，你会<strong>亲身</strong>各经历一次。</div></div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= 03 向内追问 ================= -->
+<div class="chapter" data-no="03" data-title="向内追问" data-stage="2" data-badge="选一句" data-desc="借助AI的反馈，让自己想清楚">
+  <section class="scene">
+    <div class="stage">
+      <div class="phone">
+        <div class="phone-hd"><b>小林 · 机械专业大四</b><span class="count">你说了 0 句</span></div>
+        <div class="body">
+          <div class="m u" data-i="0">我是机械专业的，应该找什么工作？</div>
+          <div class="m a" data-i="1">适合机械专业的岗位有：机械设计工程师、工艺工程师、质量工程师、设备工程师、<span class="k">技术销售</span>、<span class="k">实施顾问</span>……</div>
+          <div class="m u" data-i="c1"></div>
+          <div class="m sys end" data-i="c1end">对话结束</div>
+          <div class="m a dull" data-i="c2">（同一份清单，每个岗位多写了三行介绍……）</div>
+          <div class="m u in" data-i="3">技术销售和实施顾问，每天具体在做什么？一个机械专业的应届生，做这两个岗位分别有什么优势和短板？</div>
+          <div class="m a" data-i="4">两个岗位都要大量和客户打交道：技术销售侧重讲清方案、促成合作；实施顾问侧重理解需求、推动项目落地……</div>
+          <div class="m u in" data-i="5">我不太清楚自己更适合哪个。你问我几个问题，帮我判断一下。</div>
+          <div class="m a" data-i="6">好的。第一个问题：你更享受把一个复杂方案讲明白，还是把一个项目推动落地？第二个：你能接受经常出差吗？……</div>
+          <div class="m u in" data-i="7">如果我想去做实施顾问，离毕业还有四个月，我最应该补的是什么？</div>
+          <div class="m a" data-i="8">建议分三条线准备：业务流程知识、一款主流系统的实操、项目沟通的基本方法……</div>
+        </div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step st" data-show="0"><div class="card"><div class="who">现在，你是小林</div>机械专业大四，找工作找得很迷茫。你问了AI一句。</div></div>
+      <div class="step st" data-show="0,1"><div class="card">AI给了一份标准清单。没有错——但这份清单，在任何一个招聘网站上都能看到。</div></div>
+      <div class="step st" data-show="0,1" data-fx="pause" data-act="choice" data-unlock="1" data-slot="c1" data-wait="先选一句你会怎么回 ↑">
+        <div class="card">
+          <div class="q">你会怎么回？</div>
+          <div class="opts" role="group" aria-label="选择你的第二句话">
+            <button class="opt" type="button" data-c="end" data-show="0,1,c1,c1end" data-fb="对话停在了这里。">好的，谢谢！</button>
+            <button class="opt" type="button" data-c="more" data-show="0,1,c1,c2" data-fb="AI换了个样子重来，还是那份清单。">能再详细一点吗？</button>
+            <button class="opt" type="button" data-c="good" data-show="0,1,c1" data-cls="in" data-fb="这正是小林问的第二句话。">技术销售和实施顾问，每天具体在做什么？</button>
+          </div>
+          <div class="fb" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="step st locked" data-gate="1"><div class="card"><div class="res"></div>
+        <template data-res="end">你拿到的，是一份在任何招聘网站上都能看到的清单。<br><br><strong>大多数人就停在这里。</strong>小林没有。</template>
+        <template data-res="more">“再详细一点”里，<strong>没有你的判断</strong>——只是让AI换个样子碰运气。<br><br>小林的第二句话不是这样的。</template>
+        <template data-res="good">但注意：这句话<strong>不是凭空来的</strong>。往下看，它是怎么冒出来的。</template>
+      </div></div>
+      <div class="step st locked" data-gate="1" data-show="0,1" data-fx="pause hl-k" data-keep="1"><div class="card"><div class="who tag-in">方向一 · 向内追问</div>小林看着清单，发现了一件事：自己对<strong>其中两个岗位</strong>有点兴趣，却完全不知道它们每天在干什么。<br><br>AI没有给他答案，却让他<strong>看见了自己真正的问题</strong>。</div></div>
+      <div class="step st locked" data-gate="1" data-show="0,1,3,4"><div class="card">他问了第二句。回答让他意识到：这两个岗位都要和人打交道——而他其实挺喜欢讲东西、和人沟通。</div></div>
+      <div class="step st locked" data-gate="1" data-show="0,1,3,4,5,6"><div class="card">拿不准更适合哪个，他让AI<strong>反过来问自己</strong>。回答完五个问题，他对自己清楚多了。</div></div>
+      <div class="step st locked" data-gate="1" data-show="0,1,3,4,5,6,7,8"><div class="card">四轮下来，小林拿到的不是一份清单，而是<strong>一个方向、一份计划</strong>，和对自己更清楚的认识。</div></div>
+      <div class="step st locked" data-gate="1" data-show="0,1,3,4,5,6,7,8" data-fx="pause"><div class="card">每一轮真正起作用的，不是AI的回答，<br>而是<strong>小林读完回答后，脑子里冒出来的那个新问题。</strong></div></div>
+    </div>
+  </section>
+  <section class="beat st locked" data-gate="1">
+    <h2 class="reveal">反馈是一面镜子，<br>帮你看见<em>自己的问题</em>。</h2>
+    <p class="reveal dim">但如果，AI给的反馈本身就是错的呢？</p>
+  </section>
+</div>
+
+<!-- ================= 04 向外纠正 ================= -->
+<div class="chapter locked" data-gate="1" data-no="04" data-title="向外纠正" data-stage="2" data-badge="找错句" data-desc="AI答错了，告诉它错在哪，让它改对">
+  <section class="scene">
+    <div class="stage">
+      <div class="phone">
+        <div class="phone-hd"><b>老陈 · ERP顾问 · 十年</b><span class="count">你说了 0 句</span></div>
+        <div class="body">
+          <div class="m u" data-i="0">帮我梳理一下医疗器械企业的核心业务流程。</div>
+          <div class="m a" data-i="1">
+            <span class="s" tabindex="0" role="button" data-ok="0">采购：对供应商进行资质审核，并保留采购记录。</span>
+            <span class="s" tabindex="0" role="button" data-ok="0">生产：按注册的产品技术要求组织生产，留存批生产记录。</span>
+            <span class="s" tabindex="0" role="button" data-ok="1">销售：产品出厂前完成注册即可，销售环节无需额外的资质管理。</span>
+            <span class="s" tabindex="0" role="button" data-ok="0">售后：建立投诉与不良事件的处理流程。</span>
+          </div>
+          <div class="m u out" data-i="2"><span class="p"><sup>①</sup>你这里说销售环节无需资质管理，我认为不对。</span><span class="p"><sup>②</sup>医疗器械属于强监管行业，经销商通常也需要经营资质，销售还涉及追溯要求。</span><span class="p"><sup>③</sup>请你重新核对这一段，并区分哪些是明确的监管要求，哪些是你的推测。</span></div>
+          <div class="m a" data-i="3">你说得对，我更正：销售环节涉及经营资质、首营审核、购销记录与追溯要求。以下我将明确规定与我的推测分开标注……</div>
+          <div class="m u out" data-i="4">这些要求会对ERP设计产生哪些影响？客户主数据、销售订单、批次管理分别要注意什么？</div>
+        </div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step st" data-show="0"><div class="card"><div class="who">现在，你是老陈</div>要去一家医疗器械企业做ERP调研。这个行业你不熟，先让AI帮忙梳理。</div></div>
+      <div class="step st" data-show="0,1" data-fx="pick" data-act="pick" data-unlock="2" data-wait="先找出错的那句 ↑">
+        <div class="card">
+          <div class="q">有一句不对。<br>你能找到吗？</div>
+          <p style="margin:10px 0 0">十年顾问的直觉在提醒你。点击AI回答里<strong>你认为错的那一句</strong>。</p>
+          <div class="fb" aria-live="polite"></div>
+          <button class="opt" type="button" data-skip style="margin-top:14px;font-size:13px">我看不出来，直接告诉我</button>
+          <template data-k="ok"><strong>找到了。</strong>医疗器械是强监管行业，经销商也需要资质，销售环节还有追溯要求。</template>
+          <template data-k="no">这句没有明显问题，再看看。</template>
+          <template data-k="skip">是“销售环节无需资质管理”这一句。医疗器械是强监管行业，经销商也需要资质。</template>
+        </div>
+      </div>
+      <div class="step st locked" data-gate="2" data-show="0,1"><div class="card">不懂行的人，会把这份流程直接用了。<br>另一种人会说“AI连这都搞错”，然后关掉。<br><br><strong>老陈两种都没做。</strong></div></div>
+      <div class="step st locked" data-gate="2" data-show="0,1,2"><div class="card"><div class="who tag-out">方向二 · 向外纠正</div>他回了一句。</div></div>
+      <div class="step st locked" data-gate="2" data-show="0,1,2" data-fx="steps3"><div class="card">这句话里有三步：<br><strong>① 指出哪里错</strong>——具体到哪一句<br><strong>② 说明为什么</strong>——给出依据<br><strong>③ 要求重新核对</strong>——区分事实和推测</div></div>
+      <div class="step st locked" data-gate="2" data-show="0,1,2,3,4"><div class="card">AI改对之后，他接着往下问。这一次，回答才真正对调研有用。<br><br>涉及具体法规条款的部分，他标了出来——<strong>准备去现场找客户的质量部门确认。</strong></div></div>
+    </div>
+  </section>
+  <section class="beat st locked" data-gate="2">
+    <h2 class="reveal">AI错了，不代表不能用。<br>是需要你<em>告诉它错在哪</em>。</h2>
+    <p class="reveal dim">重要的信息，要拿到真实世界里去核实。最终对结果负责的是你。</p>
+  </section>
+</div>
+
+<!-- ================= 05 机制 ================= -->
+<div class="chapter locked" data-gate="2" data-no="05" data-title="机制" data-stage="2" data-desc="两个方向，往往同时发生">
+  <section class="scene">
+    <div class="stage">
+      <div class="phone">
+        <div class="phone-hd"><b>王总 · 企业高管</b><span class="count">你说了 0 句</span></div>
+        <div class="body">
+          <div class="m u" data-i="0">这是近半年的订单和交付数据。帮我分析一下，交付为什么越来越慢？</div>
+          <div class="m a" data-i="1"><span class="bad-s">结论：主要原因是生产产能不足</span>，建议评估扩产或增加班次……</div>
+          <div class="m u out" data-i="2">不对。最近两个月产线并不满负荷，产能不是瓶颈。你把各部门的说法拆开，看看哪些是事实、哪些是推测。</div>
+          <div class="m a" data-i="3">拆开后发现一个问题：各部门对<span class="k">“交付周期”的计算口径</span>不一样——销售从接单算起，生产从投产算起。</div>
+          <div class="m u in" data-i="4">那先统一口径。按客户视角，从接单到签收，把最近半年的交付周期重新算一遍。</div>
+        </div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step st" data-show="0,1"><div class="card"><div class="who">现在，你是王总</div>订单交付越来越慢，你把资料交给AI。它的第一版结论是：<strong>产能不足</strong>。</div></div>
+      <div class="step st" data-show="0,1" data-fx="bad"><div class="card">你一看就知道不对：<br>最近两个月，产线并不满负荷。</div></div>
+      <div class="step st" data-show="0,1,2"><div class="card"><div class="who tag-out">方向二 · 向外纠正</div>你指出了这一点，并让它把事实和推测分开。</div></div>
+      <div class="step st" data-show="0,1,2,3" data-fx="hl-k"><div class="card"><div class="who tag-in">方向一 · 向内追问</div>重新分析后发现：各部门连“交付周期”的口径都没统一。<br><br>你这才意识到——<strong>一直以为的问题，可能根本不是真正的问题。</strong></div></div>
+      <div class="step st" data-show="0,1,2,3,4"><div class="card">一次纠错，带来了一次新的认识。<br><strong>纠正AI的过程，常常也是自己想清楚的过程。</strong></div></div>
+    </div>
+  </section>
+  <section class="beat st">
+    <div class="small reveal">人在两句话之间做的三件事</div>
+    <h2 class="reveal">真正起决定作用的，<br>是你在<em>两句话之间</em>做的事。</h2>
+    <div class="trio reveal">
+      <div><b>判断</b><span>这个回答对吗？它理解我的意思了吗？这是我真正要的吗？</span></div>
+      <div><b>深化</b><span>它让我知道了什么新东西？让我产生了什么新问题？</span></div>
+      <div><b>反馈</b><span>这部分对，保留；这里理解偏了；这一点不对，请重新核对。</span></div>
+    </div>
+  </section>
+  <section class="beat st">
+    <h2 class="reveal">二次对话不是提问技巧，<br>而是一种<em>思考能力</em>。</h2>
+    <p class="reveal">AI负责提供反馈，人负责判断、深化和把问题说清楚。</p>
+  </section>
+</div>
+
+<!-- ================= 06 条件 ================= -->
+<div class="chapter locked" data-gate="2" data-no="06" data-title="条件" data-stage="3" data-desc="判断力从哪里来，谁才能从AI身上成长">
+  <section class="scene">
+    <div class="stage">
+      <div class="board" aria-hidden="true">
+        <div class="b-hd">两种人，很难从AI身上成长</div>
+        <div class="tile" data-i="p1"><b>没有判断能力</b><span>AI说什么就信什么，对的错的都照用 → AI是风险</span></div>
+        <div class="tile" data-i="p2"><b>要求AI必须完美</b><span>错一次就认定不可靠 → 把判断的责任推给了AI</span></div>
+        <div class="same" data-i="p3">本质一样：不愿意，或没有能力，自己做判断</div>
+        <div class="b-hd gap">AI 是一个能力放大器</div>
+        <div class="amp" data-i="a1"><span>你有判断力</span><i>× AI →</i><b>放大判断力</b></div>
+        <div class="amp" data-i="a2"><span>你有专业</span><i>× AI →</i><b>放大专业</b></div>
+        <div class="amp bad" data-i="a3"><span>什么都不想判断</span><i>× AI →</i><b>放大依赖</b></div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step st" data-show="p1"><div class="card"><div class="who">第一种人</div><strong>没有判断能力。</strong>AI说什么就信什么，对的照用，错的也照用。<br>对他来说，AI不是助手，而是风险。</div></div>
+      <div class="step st" data-show="p1,p2"><div class="card"><div class="who">第二种人</div><strong>要求AI必须完美。</strong>错一次，就认定不可靠。<br>可书会有错，专家会看走眼，同事也会犯错。</div></div>
+      <div class="step st" data-show="p1,p2,p3"><div class="card">一个太信任，一个不信任——眼熟吗？<br>和第 01 章的两种结局，是<strong>同一件事</strong>。</div></div>
+      <div class="step st" data-show="p1,p2,p3,a1,a2"><div class="card">AI是一个<strong>能力放大器</strong>。<br>你有判断力，它放大判断力；你有专业，它放大专业。</div></div>
+      <div class="step st" data-show="p1,p2,p3,a1,a2,a3"><div class="card">你什么都不想判断，<br>它放大的，就是你的<strong>依赖</strong>。</div></div>
+      <div class="step st" data-show="a1,a2,a3"><div class="card"><div class="who">那判断力从哪里来？</div><strong>从专业里来</strong>——老陈靠的是十年积累。<br><strong>从实践里来</strong>——每一次核对AI，都在训练它。<br><strong>从二次对话本身来</strong>——追问依据，或换一个AI交叉验证。</div></div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= 07 误区 ================= -->
+<div class="chapter locked" data-gate="2" data-no="07" data-title="误区" data-stage="3" data-desc="三个常见误区，看似在对话其实没有">
+  <section class="scene">
+    <div class="stage">
+      <div class="phone" data-judge>
+        <div class="phone-hd"><b>你 · 写本周周报</b><span class="count">说了 0 句</span></div>
+        <div class="body">
+          <div class="m u" data-i="0">帮我写一份本周项目周报，材料在上面。</div>
+          <div class="m a" data-i="1">本周项目整体进展顺利，各项工作按计划推进，风险可控……</div>
+          <div class="m u" data-i="2">再详细一点。</div>
+          <div class="m a dull" data-i="3">（同样的内容，多了三段……）</div>
+          <div class="m u" data-i="4">写得专业一点。</div>
+          <div class="m a dull" data-i="5">（换了更正式的措辞……）</div>
+          <div class="m u" data-i="6">再来一版。</div>
+          <div class="m a dull" data-i="7">（又一版，还是“风险可控”……）</div>
+          <div class="m u in j" data-i="8">第一段的进度数据对，保留。但“风险可控”不对——接口联调已经延期一周。我真正想让老板知道的是：延期原因，和我需要的支持。</div>
+          <div class="m a" data-i="9">明白，我重写第二段：接口联调延期一周，原因是……需要协调的支持是……</div>
+          <div class="m u in j" data-i="10">到目前为止，我们确定了什么？还有什么没解决？</div>
+          <div class="m a" data-i="11">已确定：进度数据、延期事实与原因。待解决：需要哪个部门协调，你还没告诉我。</div>
+        </div>
+      </div>
+    </div>
+    <div class="steps">
+      <div class="step st" data-show="0,1"><div class="card">你让AI写周报。第一版出来了，你总觉得“不够好”。</div></div>
+      <div class="step st" data-show="0,1,2,3,4,5,6,7"><div class="card"><div class="who">误区一 · 把“再详细一点”当成二次对话</div>你说了 4 句。但看看右上角——<strong>带判断的，0 句</strong>。<br>这些话只是让AI换个样子重来。</div></div>
+      <div class="step st" data-show="0,1,2,3,4,5,6,7,8,9"><div class="card">真正的二次对话，<strong>每一句都带着判断</strong>：<br>这部分对，这部分不对，我真正想要的是……</div></div>
+      <div class="step st" data-show="0,1,2,3,4,5,6,7,8,9,10,11"><div class="card"><div class="who">误区二 · 聊了很多轮，越聊越乱</div>开始之前，先想清楚这次对话的<strong>终点</strong>。<br>每隔几轮，让AI帮你总结：确定了什么，还有什么没解决。</div></div>
+      <div class="step st" data-show="0,1,2,3,4,5,6,7,8,9,10,11" data-fx="pause"><div class="card"><div class="who">误区三 · AI错一次，就放弃这个方向</div>AI答错，恰恰是<strong>最有价值的时刻</strong>：它逼你调动专业去判断，也让你看清它的边界。<br>放弃的人，错过的正是成长的机会。</div></div>
+    </div>
+  </section>
+  <section class="beat st">
+    <h2 class="reveal">没有判断的追问，<br>只是换一种方式<em>碰运气</em>。</h2>
+  </section>
+</div>
+
+<!-- ================= 08 行动 ================= -->
+<div class="chapter locked" data-gate="2" data-no="08" data-title="行动" data-stage="3" data-desc="向内追问一次，向外纠正一次">
+  <section class="beat st">
+    <div class="small reveal">现在，轮到你</div>
+    <h2 class="reveal">打开你最近一次<br>和AI的对话。</h2>
+    <div class="recap reveal">
+      <div><h3 class="tag-in">向内追问一次</h3><ul><li>为什么这么说？</li><li>还有别的可能吗？</li><li>我忽略了什么？</li><li>对我意味着什么？</li><li>第一步做什么？</li></ul></div>
+      <div><h3 class="tag-out">向外纠正一次</h3><ul><li>指出哪里错</li><li>说明为什么</li><li>要求重新核对</li></ul></div>
+    </div>
+    <p class="reveal dim">做完之后比较一下：第二次的结果有什么不同？你自己的想法又有什么变化？</p>
+  </section>
+  <section class="beat st">
+    <h2 class="reveal">AI的第一次回答，决定的是起点。<br>你的第二句话，决定的是<em>终点</em>。</h2>
+    <p class="reveal">真正会用AI的人，不是问题问得最漂亮的人，<br>而是能读懂反馈、判断对错，并且愿意再往前想一步的人。</p>
+  </section>
+</div>

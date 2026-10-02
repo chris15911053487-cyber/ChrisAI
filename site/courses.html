@@ -4,13 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI 课程｜Chris Li · AI Agent</title>
-<meta name="description" content="AI 课程 —— 精选 AI 学习资源与课程平台。">
+<meta name="description" content="AI 课程 —— 内置课程 AI入门、AI知识普及，以及精选 AI 学习资源。">
 <meta name="theme-color" content="#FAFAF9">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
 <link rel="stylesheet" href="tokens.css?v=20261001b">
 <link rel="stylesheet" href="agent.css?v=20261001b">
 <link rel="stylesheet" href="sidebar.css?v=20261001b">
 <link rel="stylesheet" href="catalog.css?v=20261001b">
+<link rel="stylesheet" href="course.css?v=20261002b">
 </head>
 <body data-nav="courses">
 
@@ -29,11 +30,17 @@
     <div>
       <span class="eyebrow">Courses</span>
       <h2>AI 课程</h2>
-      <p>精选 AI 学习资源与课程平台，点击卡片进入。</p>
+      <p>从内置课程开始系统学习，或者浏览精选的 AI 学习资源。</p>
     </div>
-    <span class="count" data-count></span>
   </div>
 
+  <h3 class="sec-title">内置课程<small>写给所有普通人</small></h3>
+  <div class="builtin" data-builtin-courses><p class="center-msg">加载中…</p></div>
+
+  <div class="page-head more-title">
+    <h3 class="sec-title">更多学习资源<small>精选 AI 课程与平台，点击卡片进入</small></h3>
+    <span class="count" data-count></span>
+  </div>
   <div class="catalog" data-section="courses"></div>
 </div>
 
@@ -41,5 +48,6 @@
 <script src="cards.js?v=20261001b"></script>
 <script src="auth.js?v=20261001b"></script>
 <script src="sidebar.js?v=20261001b"></script>
+<script src="course.js?v=20261002b"></script>
 </body>
 </html>

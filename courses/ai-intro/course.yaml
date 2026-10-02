@@ -1,0 +1,201 @@
+# AI入门 · 课程清单
+# 平台按此文件渲染课程目录（site/course.html，新标签页打开）；每节课用故事页（site/story.html）播放。
+# seq 为课程序号（不要用 "no" 作键名：YAML 会把它解析成布尔值 False）。
+# 故事页：stories/<id>.html（声明式片段，写法见 stories/README.md）+ story: true；没有故事页的课在目录里显示「制作中」。
+# 正文：lessons/<id>.md（故事页的原始文档）；视频：video 字段填 videos/ 下的文件名（留空 = 制作中）。
+# 公开字段：除 tools[].points 外全部公开；故事页、正文、视频、工具卡内容需登录。
+id: ai-intro
+title: AI入门
+subtitle: 从「AI跟我有什么关系」到「用AI解决一个真实问题」
+summary: 6 节课，四个阶段。写给所有普通人：不讲技术原理，不追工具，从你自己的事情出发，学会和AI一起把事情做成。
+status: published
+sort: 1
+audience: 所有普通人
+
+stages:
+  - id: relation
+    name: 关系
+    question: AI和我有什么关系？
+  - id: cognition
+    name: 认知
+    question: AI到底是怎么回事？
+  - id: method
+    name: 方法
+    question: 怎么和AI一起工作？
+  - id: ability
+    name: 能力
+    question: AI能帮我做成什么？
+
+lessons:
+  - id: l1
+    seq: 1
+    stage: relation
+    title: AI很厉害，可它跟我有什么关系？
+    tagline: 一个顾问、一个高管、一个大学生，找到AI切入点的故事
+    change: [旁观者, 参与者]
+    solves: 学了很多AI知识，看了很多新闻，还是觉得AI跟自己没关系。
+    practice:
+      - 用三个问题，从自己每天在做的事里找到AI的第一个切入点
+    cases: [小林, 王总, 老陈]
+    takeaways: [entry-points]
+    minutes: {video: 0, story: 18}
+    video: ""
+    story: true
+
+  - id: l2
+    seq: 2
+    stage: cognition
+    title: AI普及知识，要用"做"来学
+    tagline: 普通人最先要知道的4个AI常识，以及4个亲手验证的小实践
+    change: [听说, 真正知道]
+    solves: 听过"幻觉""上下文"这些词，真用起来心里还是没底。
+    practice:
+      - 同一个问题问三次、问三个AI
+      - 问一个专业细节，再问一个不存在的东西
+      - 一句话 vs 完整背景，对比两次结果
+    cases: [小林, 老陈, 王总]
+    takeaways: [four-facts]
+    knowledge: [AI的"记忆"是怎么回事, AI不只会处理文字, 你发给AI的东西去了哪里, AI怎么被"固化"下来]
+    minutes: {video: 0, story: 0}
+    video: ""
+    story: false
+
+  - id: l3
+    seq: 3
+    stage: method
+    title: 把问题交给AI，而不是丢一句话给它
+    tagline: 从"提问"到"交代"：五个要素，三个动作
+    change: [丢一句话, 交代任务]
+    solves: 问AI总觉得答非所问，不知道该怎么把事情说清楚。
+    practice:
+      - 用五要素把一件真实工作交代给AI
+      - 先让AI复述理解，再让它动手
+    cases: [王总, 小林, 老陈]
+    takeaways: [five-elements]
+    minutes: {video: 0, story: 0}
+    video: ""
+    story: false
+
+  - id: l4
+    seq: 4
+    stage: method
+    title: AI用得好不好，差在第二句话
+    tagline: 二次对话：把AI的回答当作反馈，而不是答案
+    change: [问一句, 会协作]
+    solves: 问了AI一次，总觉得"不够好"，又不知道下一句该说什么。
+    practice:
+      - 向内追问：用五种追问把对话往前推
+      - 向外纠正：找出AI回答里的错误，让它改对
+    cases: [小林, 老陈, 王总]
+    takeaways: [five-asks, fix-three]
+    minutes: {video: 0, story: 20}
+    video: ""
+    story: true
+
+  - id: l5
+    seq: 5
+    stage: method
+    title: 你缺的不是Prompt，是问题意识
+    tagline: AI让答案越来越便宜，好问题越来越值钱
+    change: [会问, 知道该问什么]
+    solves: 背了很多Prompt模板，却总在解决一个错误的问题。
+    practice:
+      - 拿一项手头的任务，用问题意识四问重新拆一遍
+    cases: [王总, 老陈, 小林]
+    takeaways: [problem-four]
+    minutes: {video: 0, story: 0}
+    video: ""
+    story: false
+
+  - id: l6
+    seq: 6
+    stage: ability
+    title: AI能帮你做什么（一）：看懂、学会、想清楚
+    tagline: 信息与认知：从"查得到"到"想明白"
+    change: [会用, 用在自己身上]
+    solves: 只把AI当成更快的搜索引擎，没用上它真正的本事。
+    practice:
+      - 看懂：让AI给一个陌生领域画一张"地图"
+      - 学会：让AI讲一个概念，再出题考你
+      - 看问题：让AI从一份数据里找异常
+      - 想周全：让AI扮演反对者，找方案漏洞
+    cases: [老陈, 小林, 王总]
+    takeaways: [info-four]
+    minutes: {video: 0, story: 0}
+    video: ""
+    story: false
+
+# 工具卡：学完对应课程（任一学法完成）即收集到「我的工具箱」
+tools:
+  - id: entry-points
+    name: 切入点三问
+    lesson: l1
+    points:
+      - 我每天、每周，反复在做什么？
+      - 哪里最费时间、最卡、最没把握？
+      - 哪件事我一个人做不到，或者一直想做却没做？
+      - 留意五类地方：信息多、重复多、要学新东西、需要有人一起想、一个人做不到。
+  - id: four-facts
+    name: 四个AI常识
+    lesson: l2
+    points:
+      - AI是在"生成"回答，不是在"查找"答案——它给的是参考观点。
+      - AI会一本正经地出错——越重要的信息，越要核对。
+      - AI知道很多，但不知道"你的事"——你的信息就是你的价值。
+      - 你给的背景，决定它的回答。
+      - 准备3个"试金石问题"，用它们检验任何新AI。
+  - id: five-elements
+    name: 交代五要素
+    lesson: l3
+    points:
+      - 背景：这件事的来龙去脉
+      - 目标：你想要什么结果
+      - 材料：你手里有什么
+      - 约束：有什么限制和要求
+      - 标准：做到什么程度算好
+      - 三个动作：先让AI复述理解；大任务拆开交；先分析，再动手。
+  - id: five-asks
+    name: 五种追问
+    lesson: l4
+    points:
+      - 问原因：为什么这么说？依据是什么？
+      - 问可能：还有别的解释或做法吗？
+      - 问遗漏：我忽略了什么？最大风险在哪？
+      - 问自己：结合我的情况，这意味着什么？
+      - 问行动：第一步具体做什么？
+      - 另外两个动作：让AI反过来问你；让AI换个角色来看。
+  - id: fix-three
+    name: 纠错三步
+    lesson: l4
+    points:
+      - 指出哪里错：具体到哪一句、哪个数字。
+      - 说明为什么错：给出你的依据或正确信息。
+      - 要求重新核对：让它区分事实和推测，说明来源。
+      - 真正重要的信息，拿到真实世界里去核实。
+  - id: problem-four
+    name: 问题意识四问
+    lesson: l5
+    points:
+      - 真正要解决的问题是什么？
+      - 问题到底出在哪里？是现象，还是原因？
+      - 哪里最浪费，或者最难？
+      - 有没有另一种做法？
+      - 三个习惯：先问"这是为了什么"；遇到重复问"能不能不这样做"；看到结果问"所以呢"。
+  - id: info-four
+    name: 信息与认知四件事
+    lesson: l6
+    points:
+      - 看懂：先让AI画一张陌生领域的"地图"，再挑一个点深入。
+      - 学会：让AI用最简单的话讲给你听，再出题考你。
+      - 看问题：让AI从数据里找异常，列出可能原因（数据先脱敏）。
+      - 想周全：让AI扮演反对者，找出方案里最大的漏洞。
+
+finale:
+  title: 结业作业
+  desc: 用一个你自己的真实问题，走完"找切入点 → 交代清楚 → 二次对话 → 问题意识"全流程，提交过程记录。
+  status: coming
+
+next:
+  title: 第二阶段：AI能帮你做什么
+  items: [内容生产, 业务协作, 固化与自动化, 构建]
+  status: coming

@@ -7,6 +7,7 @@ from pathlib import Path
 _TMP = tempfile.mkdtemp(prefix="agent-test-")
 os.environ["DATA_DIR"] = _TMP
 os.environ.setdefault("SKILLS_BUILTIN_DIR", str(Path(__file__).resolve().parents[2] / "skills" / "builtin"))
+os.environ.setdefault("COURSES_DIR", str(Path(__file__).resolve().parents[2] / "courses"))
 os.environ.setdefault("RUNNER_URL", "http://runner.invalid:9000")
 os.environ.setdefault("RUNNER_HOST", "runner.invalid")
 os.environ["RATE_WRITE_PER_MIN"] = "1000"
