@@ -1299,6 +1299,7 @@ async def course_progress_put(cid: str, lid: str, req: CourseProgressReq, reques
 
 
 @app.delete("/api/courses/{cid}/lessons/{lid}/progress")
-async def course_progress_reset(cid: str, lid: str, mode: str, request: Request):
+async def course_progress_reset(cid: str, lid: str, mode: str, request: Request, full: bool = False):
+    # full=true：连同「已完成」标记一起清除（故事页「重置本课进度」）；默认只清阅读状态
     owner, _ = require_user(request)
-    return courses.reset_state(owner, cid, lid, mode)
+    return courses.reset_state(owner, cid, lid, mode, full)

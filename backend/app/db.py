@@ -930,6 +930,11 @@ def course_progress_get(owner: str, course_id: str, lesson_id: str, mode: str) -
                 "WHERE owner=? AND course_id=? AND lesson_id=? AND mode=?", (owner, course_id, lesson_id, mode))
 
 
+def course_progress_delete(owner: str, course_id: str, lesson_id: str, mode: str) -> None:
+    _exec("DELETE FROM course_progress WHERE owner=? AND course_id=? AND lesson_id=? AND mode=?",
+          (owner, course_id, lesson_id, mode))
+
+
 def course_progress_upsert(owner: str, course_id: str, lesson_id: str, mode: str,
                            done: bool, state: Optional[str]) -> None:
     _exec("INSERT INTO course_progress (owner, course_id, lesson_id, mode, done, state, updated_at) "

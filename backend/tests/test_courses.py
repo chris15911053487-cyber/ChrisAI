@@ -119,7 +119,7 @@ def test_detail_anon_has_catalog_but_no_gated_data(anon):
     l4 = next(l for l in d["lessons"] if l["id"] == "l4")
     assert l4["modes"]["story"]["available"] and l4["modes"]["story"]["minutes"] > 0
     assert l4["modes"]["text"]["available"] and not l4["modes"]["video"]["available"]
-    assert not any(l["modes"]["story"]["available"] for l in d["lessons"] if l["id"] != "l4")  # 其余课制作中
+    assert not any(l["modes"]["story"]["available"] for l in d["lessons"] if l["id"] not in ("l1", "l4"))  # 其余课制作中
     assert "interactive" not in l4["modes"]
     assert d["tools"] and all("points" not in t for t in d["tools"])  # 工具卡要点需登录
 
@@ -153,7 +153,7 @@ def test_user_can_read_text_and_story(user):
     d = r.json()
     assert 'class="story-meta"' in d["html"] and "<script" not in d["html"]
     assert d["progress"] == {"done": False, "state": None, "updated_at": 0}
-    assert user.get(f"/api/courses/{CID}/lessons/l1/story").status_code == 404      # 制作中
+    assert user.get(f"/api/courses/{CID}/lessons/l2/story").status_code == 404      # 制作中
     assert user.get(f"/api/courses/{CID}/lessons/l4/interactive").status_code == 404  # 旧学法已下线
     assert user.get(f"/api/courses/{CID}/lessons/l1/video").status_code == 404        # 视频制作中
 
@@ -183,6 +183,23 @@ def test_progress_roundtrip(user):
     assert r.json()["state"] is None and r.json()["done"] is True
     prog = user.get(f"/api/courses/{CID}").json()["progress"]
     assert prog["l4"]["story"]["done"] is True
+
+
+def test_progress_full_reset(user):
+    base = f"/api/courses/{CID}/lessons/l4/progress"
+    user.put(base, json={"mode": "story", "done": True, "state": {"v": 1, "cur": 5}})
+    assert user.get(f"/api/courses/{CID}").json()["progress"]["l4"]["story"]["done"] is True
+    # 完全重置：状态与完成标记一并清除，工具卡随之取消收集
+    r = user.delete(base + "?mode=story&full=true")
+    assert r.status_code == 200 and r.json() == {"done": False, "state": None, "updated_at": 0}
+    assert "l4" not in user.get(f"/api/courses/{CID}").json()["progress"]
+    assert user.get(f"/api/courses/{CID}/lessons/l4/story").json()["progress"]["state"] is None
+    # 没有记录时重置也是幂等的
+    assert user.delete(base + "?mode=story&full=true").status_code == 200
+
+
+def test_progress_reset_requires_login(anon):
+    assert anon.delete(f"/api/courses/{CID}/lessons/l4/progress?mode=story&full=true").status_code == 401
 
 
 def test_progress_isolated_between_users(user):

@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0E0E12">
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
-<link rel="stylesheet" href="story.css?v=20261002b">
+<link rel="stylesheet" href="story.css?v=20261003b">
 </head>
 <body>
 <!-- 故事页渲染器：内容由 /api/courses/<课程>/lessons/<课>/story 提供，播放逻辑见 story.js -->
@@ -26,8 +26,15 @@
   <div class="ov-bar"><i id="ovBar"></i></div>
   <nav class="side-list" id="sideList" aria-label="章节与步骤"></nav>
   <div class="side-ft">
-    <kbd>↓</kbd> <kbd>空格</kbd> 下一步　<kbd>↑</kbd> 上一步<br>
-    <span class="act-demo">互动</span> 需要你动手才能继续
+    <div class="ft-keys">
+      <span><kbd>↓</kbd> <kbd>空格</kbd> 下一步</span>
+      <span><kbd>↑</kbd> 上一步</span>
+      <span id="fsHint"><kbd>F</kbd> 全屏</span>
+    </div>
+    <div class="ft-act">
+      <span class="act-demo">互动</span><span class="ft-act-t">需点击才能继续</span>
+      <button type="button" id="resetBtn">重置本课进度</button>
+    </div>
   </div>
 </aside>
 <div class="scrim" id="scrim"></div>
@@ -40,6 +47,6 @@
 <main></main>
 
 <script src="auth.js?v=20261002b"></script>
-<script src="story.js?v=20261002b"></script>
+<script src="story.js?v=20261003b"></script>
 </body>
 </html>

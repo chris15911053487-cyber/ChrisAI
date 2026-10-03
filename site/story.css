@@ -76,6 +76,14 @@
   .dot.c{background:var(--hl);transform:scale(1.4);box-shadow:0 0 0 3px rgba(255,213,74,.22)}
   .dot.l{background:transparent;box-shadow:inset 0 0 0 1px #3A3A44;cursor:not-allowed}
   .side-ft{border-top:1px solid var(--line);padding-top:12px;font-size:12px;line-height:1.9;color:var(--text-3)}
+  .ft-keys{display:flex;flex-wrap:wrap;gap:0 10px}
+  .ft-keys>span{white-space:nowrap}
+  .ft-act{display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .ft-act-t{flex:1;min-width:0}
+  .ft-act button{flex:none;font:inherit;color:var(--text-3);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color .2s var(--ease)}
+  .ft-act button:hover{color:var(--text)}
+  .ft-act button.warn{color:#FF8A8D}
+  .ft-act button:disabled{opacity:.5;cursor:default}
   .side-ft kbd{font:11px var(--sans);border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--text-2)}
 
   /* ===== 全屏节拍：一屏一句话 ===== */

@@ -234,11 +234,13 @@ def save(owner: str, cid: str, lid: str, mode: str, done: Optional[bool], state:
     return get_state(owner, cid, lid, mode)
 
 
-def reset_state(owner: str, cid: str, lid: str, mode: str) -> dict:
-    """清空故事页阅读状态（保留已完成标记）。"""
+def reset_state(owner: str, cid: str, lid: str, mode: str, full: bool = False) -> dict:
+    """清空故事页阅读状态。full=False 保留已完成标记；full=True 整行删除（含完成标记，工具卡随之取消收集）。"""
     _check_mode(mode)
     _lesson(_published(cid), lid)
     prev = db.course_progress_get(owner, cid, lid, mode)
-    if prev:
+    if prev and full:
+        db.course_progress_delete(owner, cid, lid, mode)
+    elif prev:
         db.course_progress_upsert(owner, cid, lid, mode, bool(prev["done"]), None)
     return get_state(owner, cid, lid, mode)

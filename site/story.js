@@ -406,14 +406,15 @@
   }
 
   /* ---------- 阅读进度：保存到账号，读到「完成」页记为完成 ---------- */
-  var gatesOpen=[],choiceSel={},pickSel={},saveT=null,doneSent=wasDone,saveWarned=false;
+  var gatesOpen=[],choiceSel={},pickSel={},saveT=null,doneSent=wasDone,saveWarned=false,resetting=false;
   var progUrl=API+'/lessons/'+enc(LID)+'/progress';
   function snapshot(){
     return {v:1,cur:cur,visited:Object.keys(visited).map(Number),gates:gatesOpen.slice(),choice:choiceSel,pick:pickSel};
   }
-  function save(){clearTimeout(saveT);saveT=setTimeout(function(){flushSave(false);},800);}
+  function save(){if(resetting)return;clearTimeout(saveT);saveT=setTimeout(function(){flushSave(false);},800);}
   function flushSave(keep){
     saveT=null;
+    if(resetting)return;
     var body={mode:'story',state:snapshot()};
     if(visited[finStep.i]&&!doneSent){body.done=true;doneSent=true;}
     fetch(progUrl,{method:'PUT',credentials:'same-origin',keepalive:keep,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
@@ -583,7 +584,43 @@
   ovBtn.addEventListener('click',function(){setOpen(!side.classList.contains('open'));});
   scrim.addEventListener('click',function(){setOpen(false);});
 
-  /* ---------- 键盘：↓ / 空格 下一步，↑ 上一步 ---------- */
+  /* ---------- 全屏：按 F 或点侧栏按钮切换（浏览器自带的 Esc 退出） ---------- */
+  var fsRoot=document.documentElement,fsHint=$('#fsHint');
+  var fsReq=fsRoot.requestFullscreen||fsRoot.webkitRequestFullscreen,
+      fsExit=document.exitFullscreen||document.webkitExitFullscreen;
+  function isFs(){return !!(document.fullscreenElement||document.webkitFullscreenElement);}
+  function toggleFs(){
+    if(!fsReq){toast('','当前浏览器不支持全屏',true);return;}
+    var p=isFs()?fsExit.call(document):fsReq.call(fsRoot);
+    if(p&&p.catch)p.catch(function(){toast('','无法进入全屏',true);});
+  }
+  if(!fsReq)fsHint.hidden=true;   // 如 iPhone Safari 不支持网页全屏
+
+  /* ---------- 重置本课进度：两次点击确认；清除阅读状态与完成记录，然后重新载入 ---------- */
+  var resetBtn=$('#resetBtn'),resetT,RESET_TXT='重置本课进度';
+  function disarmReset(){clearTimeout(resetT);resetBtn.classList.remove('warn');resetBtn.textContent=RESET_TXT;}
+  resetBtn.disabled=false;disarmReset();
+  resetBtn.addEventListener('click',function(){
+    if(resetting)return;
+    if(!resetBtn.classList.contains('warn')){
+      resetBtn.classList.add('warn');resetBtn.textContent='再点确认';
+      toast('重置本课进度','将清除阅读进度和完成记录（含本课工具卡）');
+      resetT=setTimeout(disarmReset,4000);
+      return;
+    }
+    clearTimeout(resetT);resetting=true;resetBtn.disabled=true;
+    clearTimeout(saveT);saveT=null;   // 丢弃尚未发出的保存，避免把进度写回去
+    fetch(progUrl+'?mode=story&full=true',{method:'DELETE',credentials:'same-origin'}).then(function(r){
+      if(!r.ok)throw new Error(r.status===401?'登录已过期，请刷新后重新登录':'请求失败（'+r.status+'）');
+      if('scrollRestoration' in history)history.scrollRestoration='manual';
+      location.reload();
+    }).catch(function(e){
+      resetting=false;resetBtn.disabled=false;disarmReset();
+      toast('重置失败',e&&e.message&&e.message!=='Failed to fetch'?e.message:'请检查网络后重试',true);
+    });
+  });
+
+  /* ---------- 键盘：↓ / 空格 下一步，↑ 上一步，F 全屏 ---------- */
   document.addEventListener('keydown',function(e){
     if(e.altKey||e.ctrlKey||e.metaKey)return;
     if(document.querySelector('dialog[open]'))return;   // 登录框打开时不翻页
@@ -591,6 +628,7 @@
     if(/INPUT|TEXTAREA|SELECT/.test(tag))return;
     var onBtn=tag==='BUTTON'||tag==='A'||(t.getAttribute&&t.getAttribute('role')==='button');
     if(e.key==='Escape'){setOpen(false);return;}
+    if((e.key==='f'||e.key==='F')&&!e.repeat){e.preventDefault();toggleFs();return;}
     if(e.key==='Enter'&&!onBtn){var pc=chatOf(steps[cur]);if(pc&&pc.pending){e.preventDefault();pc.send();return;}}
     if(e.key==='ArrowDown'||e.key==='PageDown'||e.key==='j'||(e.key===' '&&!e.shiftKey&&!onBtn)){e.preventDefault();go(cur+1);}
     else if(e.key==='ArrowUp'||e.key==='PageUp'||e.key==='k'||(e.key===' '&&e.shiftKey&&!onBtn)){e.preventDefault();go(cur-1);}
