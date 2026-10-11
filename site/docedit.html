@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文档编辑器｜Chris Li · AI Agent</title>
+<meta name="description" content="在线打开、编辑、预览并导出 HTML / Markdown 文件。">
+<meta name="theme-color" content="#FAFAF9">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230A0A0A'/><text x='50%25' y='55%25' font-size='13' font-weight='700' font-family='sans-serif' fill='%23fff' text-anchor='middle' dominant-baseline='middle'>CL</text></svg>">
+<link rel="stylesheet" href="tokens.css?v=20261001b">
+<link rel="stylesheet" href="agent.css?v=20261001b">
+<link rel="stylesheet" href="sidebar.css?v=20261001b">
+<link rel="stylesheet" href="docedit.css?v=20261011b">
+</head>
+<body data-nav="tools">
+
+<header class="bar">
+  <div class="left">
+    <a class="logo" href="index.html" aria-label="返回首页">CL</a>
+    <h1>文档编辑器<small>Tools</small></h1>
+  </div>
+  <div class="actions">
+    <a class="iconbtn" href="tools.html"><i data-i="arrow-left"></i>AI 工具</a>
+  </div>
+</header>
+
+<main class="de" id="de">
+  <div class="de-toolbar">
+    <div class="de-group">
+      <button class="iconbtn" type="button" id="btnNew"><i data-i="plus"></i>新建</button>
+      <button class="iconbtn" type="button" id="btnOpen"><i data-i="upload"></i>打开文件</button>
+      <input type="file" id="fileInput" accept=".md,.markdown,.html,.htm,.txt,text/markdown,text/html,text/plain" hidden>
+    </div>
+    <label class="de-name" title="导出时使用的文件名">
+      <i data-i="file"></i>
+      <input id="docName" type="text" spellcheck="false" maxlength="80" aria-label="文件名">
+    </label>
+    <div class="de-seg" role="group" aria-label="文档格式" id="fmtSeg">
+      <button type="button" data-fmt="md">Markdown</button>
+      <button type="button" data-fmt="html">HTML</button>
+    </div>
+    <div class="de-seg" role="group" aria-label="视图" id="viewSeg">
+      <button type="button" data-view="code">源码</button>
+      <button type="button" data-view="split" class="hide-sm">分栏</button>
+      <button type="button" data-view="preview">预览</button>
+    </div>
+    <span class="spacer"></span>
+    <button class="iconbtn sq" type="button" id="btnFs" title="全屏（Esc 退出）" aria-label="全屏" aria-pressed="false"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="fs-in" d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/><path class="fs-out" d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg></button>
+    <div class="de-group">
+      <button class="iconbtn" type="button" id="btnExportAlt" hidden><i data-i="download"></i>导出 HTML</button>
+      <button class="iconbtn primary" type="button" id="btnExport"><i data-i="download"></i>导出</button>
+    </div>
+  </div>
+
+  <div class="de-panes" id="panes" data-view="split">
+    <section class="de-pane de-code" aria-label="源码">
+      <div class="de-ph">
+        <span class="de-pt">源码</span>
+        <button class="de-pb" type="button" data-view-to="preview" title="收起源码" aria-label="收起源码"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg></button>
+      </div>
+      <button class="de-rail" type="button" data-view-to="split" title="展开源码"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m13 17 5-5-5-5M6 17l5-5-5-5"/></svg><span>源码</span></button>
+      <div class="de-pbody">
+        <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="源码编辑区"></textarea>
+      </div>
+    </section>
+    <section class="de-pane de-preview" aria-label="预览">
+      <div class="de-ph">
+        <button class="de-pb" type="button" data-view-to="code" title="收起预览" aria-label="收起预览"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m13 17 5-5-5-5M6 17l5-5-5-5"/></svg></button>
+        <span class="de-pt">预览</span>
+      </div>
+      <button class="de-rail" type="button" data-view-to="split" title="展开预览"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg><span>预览</span></button>
+      <div class="de-pbody">
+        <iframe id="pvMd" title="Markdown 预览" sandbox="allow-same-origin"></iframe>
+        <iframe id="pvHtml" title="HTML 预览" sandbox="allow-scripts" hidden></iframe>
+      </div>
+    </section>
+  </div>
+
+  <div class="de-status">
+    <span id="stFmt"></span>
+    <span id="stCount"></span>
+    <span class="spacer"></span>
+    <span id="stSave"></span>
+  </div>
+
+  <div class="de-drop" id="drop" hidden><div><i data-i="upload"></i>松开即可打开文件</div></div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="vendor/marked-14.1.4.umd.js"></script>
+<script src="vendor/purify-3.2.3.min.js"></script>
+<script src="icons.js?v=20261001b"></script>
+<script src="auth.js?v=20261001b"></script>
+<script src="sidebar.js?v=20261001b"></script>
+<script src="docedit.js?v=20261011b"></script>
+</body>
+</html>
