@@ -1,6 +1,7 @@
 /* 社区帖子前端：按页面上的 data-page 分流到 list / view / edit。
    依赖：icons.js(window.icon)、auth.js(window.clAuth)、marked + DOMPurify（详情/预览渲染）。
-   - list：/api/posts 列表 + /api/posts/categories 分类筛选，卡片点进 post-view.html?id=
+   - list：/api/posts 信息流（标题 + 摘要 + 首图）+ /api/posts/featured 顶部精选位 + /api/posts/categories 分类筛选，
+     点进 post-view.html?id=
    - view：/api/posts/{id} 详情，marked+DOMPurify 渲染正文
    - edit：发帖 / 编辑 / 我的帖子（/api/posts, /api/posts/mine, submit, delete） */
 (() => {
@@ -46,12 +47,6 @@
     if (!cat) return ['#F4F4F2', '#3F3F46'];
     let h = 0; for (const ch of cat) h = (h * 31 + ch.codePointAt(0)) >>> 0;
     return PALETTE[h % PALETTE.length];
-  }
-  function initialOf(t) {
-    t = (t || '').trim(); if (!t) return '·';
-    const w = t.match(/[A-Za-z0-9]+/g);
-    if (/^[A-Za-z0-9]/.test(t) && w) return (w[0][0] + (w[1] ? w[1][0] : '')).toUpperCase();
-    return [...t][0];
   }
 
   // 转义为纯文本（当净化库不可用时的安全兜底）
@@ -105,10 +100,14 @@
     const state = { q: '', cat: params.get('cat') || '', offset: 0, done: false, loading: false, items: [] };
     box.replaceChildren(el('div', 'cat-loading', '加载中…'));
 
-    let cats = [], pub = {};
+    let cats = [], pub = {}, featured = [];
     try {
-      const cd = await api('/api/posts/categories');
+      const [cd, fd] = await Promise.all([
+        api('/api/posts/categories'),
+        api('/api/posts/featured').catch(() => ({ posts: [] })),   // 精选位失败不影响列表
+      ]);
       cats = cd.categories || []; pub = cd.published || {};
+      featured = fd.posts || [];
     } catch {
       box.replaceChildren(emptyState('alert', '加载失败', '无法获取帖子，请稍后刷新重试。'));
       return;
@@ -120,7 +119,7 @@
 
     const bar = el('div', 'toolbar');
     const search = el('label', 'search'); search.innerHTML = ic('search');
-    const inp = el('input'); inp.type = 'search'; inp.placeholder = '搜索已加载帖子的标题或标签'; inp.setAttribute('aria-label', '搜索');
+    const inp = el('input'); inp.type = 'search'; inp.placeholder = '搜索已加载帖子的标题、摘要或标签'; inp.setAttribute('aria-label', '搜索');
     search.append(inp, el('kbd', null, '/'));
     inp.addEventListener('input', () => { state.q = inp.value.trim(); render(); });
     bar.append(search);
@@ -136,34 +135,83 @@
     addChip('', '全部', totalPub);
     for (const c of cats) addChip(c, c, pub[c] || 0);
 
+    const featBox = el('section', 'pfeat'); featBox.setAttribute('aria-label', '精选');
     const meta = el('div', 'result'); meta.setAttribute('aria-live', 'polite');
-    const grid = el('div', 'cards');
+    const grid = el('div', 'pfeed');
     const moreWrap = el('div', 'more-wrap');
     const moreBtn = el('button', 'iconbtn', '加载更多'); moreBtn.type = 'button';
     moreBtn.addEventListener('click', () => loadMore());
     moreWrap.append(moreBtn);
-    box.replaceChildren(bar, chips, meta, grid, moreWrap);
+    box.replaceChildren(bar, chips, featBox, meta, grid, moreWrap);
 
     addEventListener('keydown', e => {
       if (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) { e.preventDefault(); inp.focus(); }
     });
 
-    function card(p) {
-      const a = el('a', 'ccard'); a.href = 'post-view.html?id=' + encodeURIComponent(p.id);
+    // 缩略图：URL 由后端从正文第一张图提取并校验过；加载失败就整块去掉，不留破图
+    function coverImg(p, cls) {
+      if (!p.cover) return null;
+      const img = el('img', cls); img.src = p.cover; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
+      img.addEventListener('error', () => img.remove());
+      return img;
+    }
+
+    function catChip(p) {
+      if (!p.category) return null;
       const [bg, fg] = colorOf(p.category);
-      const cv = el('div', 'cv'); cv.style.setProperty('--cv-bg', bg); cv.style.setProperty('--cv-fg', fg);
-      cv.append(el('span', 'cv-l', initialOf(p.title))); cv.setAttribute('aria-hidden', 'true');
-      const body = el('div', 'cc-body');
-      const top = el('div', 'cc-top'); top.append(el('h3', null, p.title));
-      body.append(top);
-      const tags = (p.tags || []).slice(0, 3).join(' · ');
-      body.append(el('p', null, tags || ('作者 ' + (p.author_name || '匿名'))));
-      const foot = el('div', 'cc-foot');
-      if (p.category) { const cat = el('span', 'cat', p.category); cat.style.setProperty('--cv-bg', bg); cat.style.setProperty('--cv-fg', fg); foot.append(cat); }
-      const go = el('span', 'go'); go.append(fmtDate(p.published_at || p.updated_at));
-      foot.append(go);
-      a.append(cv, body, foot);
+      const c = el('span', 'cat', p.category); c.style.setProperty('--cv-bg', bg); c.style.setProperty('--cv-fg', fg);
+      return c;
+    }
+
+    function metaLine(p, withTags) {
+      const m = el('div', 'pi-meta');
+      m.append(el('span', null, p.author_name || '匿名'), el('span', null, fmtDate(p.published_at || p.updated_at)));
+      if (withTags) for (const t of (p.tags || []).slice(0, 3)) m.append(el('span', 'tg', '#' + t));
+      return m;
+    }
+
+    // 信息流一条：左边分类 / 标题 / 两行摘要 / 作者·日期·标签，右边有图才放缩略图
+    function item(p) {
+      const a = el('a', 'pitem'); a.href = 'post-view.html?id=' + encodeURIComponent(p.id);
+      const main = el('div', 'pi-main');
+      const top = el('div', 'pi-top');
+      const c = catChip(p); if (c) top.append(c);
+      if (p.featured) top.append(el('span', 'pi-feat', '精选'));
+      if (top.childNodes.length) main.append(top);
+      main.append(el('h3', null, p.title));
+      if (p.excerpt) main.append(el('p', 'pi-ex', p.excerpt));
+      main.append(metaLine(p, true));
+      a.append(main);
+      const img = coverImg(p, 'pi-cover'); if (img) a.append(img);
       return a;
+    }
+
+    // 精选位一张：有图在上方放封面，没有图用分类色块垫底
+    function featCard(p) {
+      const a = el('a', 'fcard'); a.href = 'post-view.html?id=' + encodeURIComponent(p.id);
+      const img = coverImg(p, 'fc-cover');
+      if (img) a.append(img);
+      else {
+        const [bg, fg] = colorOf(p.category);
+        const ph = el('div', 'fc-ph'); ph.style.setProperty('--cv-bg', bg); ph.style.setProperty('--cv-fg', fg);
+        ph.append(el('span', null, p.category || '精选')); ph.setAttribute('aria-hidden', 'true');
+        a.append(ph);
+      }
+      const body = el('div', 'fc-body');
+      body.append(el('h3', null, p.title));
+      if (p.excerpt) body.append(el('p', 'pi-ex', p.excerpt));
+      body.append(metaLine(p, false));
+      a.append(body);
+      return a;
+    }
+
+    function renderFeatured(show) {
+      if (!show || !featured.length) { featBox.hidden = true; return; }
+      const head = el('div', 'pfeat-head'); head.innerHTML = ic('sparkle'); head.append('精选');
+      const row = el('div', 'pfeat-row n' + Math.min(featured.length, 3));
+      row.append(...featured.map(featCard));
+      featBox.replaceChildren(head, row);
+      featBox.hidden = false;
     }
 
     function reset() {
@@ -195,8 +243,9 @@
     function render() {
       const q = state.q.toLowerCase();
       const list = q
-        ? state.items.filter(p => (p.title || '').toLowerCase().includes(q) || (p.tags || []).join(' ').toLowerCase().includes(q))
+        ? state.items.filter(p => [p.title, p.excerpt, (p.tags || []).join(' ')].join('\n').toLowerCase().includes(q))
         : state.items;
+      renderFeatured(!q && !state.cat);   // 精选只在「全部」且没在搜索时出现
       chips.querySelectorAll('.chip').forEach(b => { const on = b.dataset.v === state.cat; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
 
       let metaText;
@@ -207,7 +256,7 @@
       if (!list.length) {
         grid.replaceChildren(emptyState('search', q ? '没有匹配的帖子' : '还没有帖子', q ? '换个关键词，或加载更多后再搜。' : '成为第一个发帖的人吧。'));
       } else {
-        grid.replaceChildren(...list.map(card));
+        grid.replaceChildren(...list.map(item));
       }
       // 搜索态或已到末尾时隐藏"加载更多"
       moreWrap.style.display = (state.done || q) ? 'none' : '';

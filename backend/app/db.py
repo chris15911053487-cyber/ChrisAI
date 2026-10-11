@@ -148,7 +148,10 @@ CREATE TABLE IF NOT EXISTS posts (
     reject_reason TEXT NOT NULL DEFAULT '',
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL,
-    published_at REAL NOT NULL DEFAULT 0
+    published_at REAL NOT NULL DEFAULT 0,
+    excerpt TEXT NOT NULL DEFAULT '',    -- 列表摘要（保存正文时由 htmlsanitize.post_preview 生成）
+    cover TEXT NOT NULL DEFAULT '',      -- 列表缩略图：正文第一张图的 URL，没有则为空
+    featured_at REAL NOT NULL DEFAULT 0  -- 管理员设为精选的时间；0 = 非精选
 );
 CREATE INDEX IF NOT EXISTS idx_posts_owner ON posts(owner, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status, published_at DESC);
@@ -214,6 +217,15 @@ def _migrate(c: sqlite3.Connection) -> None:
     cols = {r["name"] for r in c.execute("PRAGMA table_info(posts)").fetchall()}
     if "body_html" not in cols:  # 富文本编辑器正文（已净化 HTML）；旧帖为空时回退 body_md 渲染
         c.execute("ALTER TABLE posts ADD COLUMN body_html TEXT NOT NULL DEFAULT ''")
+    if "featured_at" not in cols:  # 管理员精选（列表页顶部精选位）
+        c.execute("ALTER TABLE posts ADD COLUMN featured_at REAL NOT NULL DEFAULT 0")
+    if "excerpt" not in cols:  # 列表摘要 + 首图：加列时给已有帖子补算一次
+        from .htmlsanitize import post_preview
+        c.execute("ALTER TABLE posts ADD COLUMN excerpt TEXT NOT NULL DEFAULT ''")
+        c.execute("ALTER TABLE posts ADD COLUMN cover TEXT NOT NULL DEFAULT ''")
+        for r in c.execute("SELECT id, body_md, body_html FROM posts").fetchall():
+            excerpt, cover = post_preview(r["body_md"] or "", r["body_html"] or "")
+            c.execute("UPDATE posts SET excerpt=?, cover=? WHERE id=?", (excerpt, cover, r["id"]))
 
 
 def _exec(sql: str, args: tuple = ()) -> sqlite3.Cursor:
@@ -706,7 +718,7 @@ def kb_chunks_by_ids(ids: list[int]) -> dict[int, dict]:
 
 # ---------- 社区帖子 ----------
 _POST_LIST_COLS = ("id, owner, author_name, title, category, tags, status, "
-                   "created_at, updated_at, published_at")
+                   "created_at, updated_at, published_at, excerpt, cover, featured_at")
 
 
 def _post_row(r: Optional[dict]) -> Optional[dict]:
@@ -720,14 +732,15 @@ def _post_row(r: Optional[dict]) -> Optional[dict]:
 
 
 def post_create(owner: str, author_name: str, title: str, body_md: str,
-                category: str, tags: list[str], body_html: str = "") -> dict:
+                category: str, tags: list[str], body_html: str = "",
+                excerpt: str = "", cover: str = "") -> dict:
     pid = uuid.uuid4().hex
     now = time.time()
     _exec(
         "INSERT INTO posts(id, owner, author_name, title, body_md, body_html, category, tags, status, "
-        "created_at, updated_at) VALUES(?,?,?,?,?,?,?,?, 'draft', ?, ?)",
+        "created_at, updated_at, excerpt, cover) VALUES(?,?,?,?,?,?,?,?, 'draft', ?, ?, ?, ?)",
         (pid, owner, author_name, title, body_md, body_html, category,
-         json.dumps(tags, ensure_ascii=False), now, now),
+         json.dumps(tags, ensure_ascii=False), now, now, excerpt, cover),
     )
     return post_get(pid)
 
@@ -753,6 +766,21 @@ def post_list_published(category: Optional[str] = None, categories: Optional[lis
     return [_post_row(r) for r in _all(sql, tuple(args))]
 
 
+def post_list_featured(limit: int = 3) -> list[dict]:
+    """精选位：已发布且被设为精选的帖子，最近设为精选的在前。"""
+    return [_post_row(r) for r in _all(
+        f"SELECT {_POST_LIST_COLS} FROM posts WHERE status='published' AND featured_at > 0 "
+        "ORDER BY featured_at DESC LIMIT ?",
+        (limit,),
+    )]
+
+
+def post_set_featured(pid: str, featured: bool) -> Optional[dict]:
+    """设置 / 取消精选。不刷新 updated_at（精选不算内容修改）。"""
+    _exec("UPDATE posts SET featured_at=? WHERE id=?", (time.time() if featured else 0, pid))
+    return post_get(pid)
+
+
 def post_list_by_owner(owner: str, limit: int = 200) -> list[dict]:
     """作者本人的全部帖子（任意状态）。"""
     return [_post_row(r) for r in _all(
@@ -763,17 +791,19 @@ def post_list_by_owner(owner: str, limit: int = 200) -> list[dict]:
 
 
 def post_list_by_status(status: str, limit: int = 200) -> list[dict]:
-    """按状态列出（管理员审核用，如 status='pending'）。"""
+    """按状态列出（管理员用）。待审按提交先后排队（旧的在前），其他状态新的在前。"""
+    order = "updated_at ASC" if status == "pending" else "COALESCE(NULLIF(published_at, 0), updated_at) DESC"
     return [_post_row(r) for r in _all(
-        f"SELECT {_POST_LIST_COLS} FROM posts WHERE status=? ORDER BY updated_at ASC LIMIT ?",
+        f"SELECT {_POST_LIST_COLS} FROM posts WHERE status=? ORDER BY {order} LIMIT ?",
         (status, limit),
     )]
 
 
 def post_update_fields(pid: str, fields: dict) -> Optional[dict]:
-    """更新帖子字段（title/body_md/body_html/category/tags/status/reject_reason/published_at）。
-    tags 以 list 传入会自动序列化。总是刷新 updated_at。"""
-    allowed = ("title", "body_md", "body_html", "category", "tags", "status", "reject_reason", "published_at")
+    """更新帖子字段（title/body_md/body_html/category/tags/status/reject_reason/published_at/
+    excerpt/cover/featured_at）。tags 以 list 传入会自动序列化。总是刷新 updated_at。"""
+    allowed = ("title", "body_md", "body_html", "category", "tags", "status", "reject_reason", "published_at",
+               "excerpt", "cover", "featured_at")
     sets, args = [], []
     for k in allowed:
         if k in fields:

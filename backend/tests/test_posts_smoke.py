@@ -57,6 +57,18 @@ def test_posts_end_to_end():
         assert any(x["id"] == pid for x in c.get("/api/posts").json()["posts"])
         assert any(x["id"] == pid for x in c.get(f"/api/posts?category={cat}").json()["posts"])
 
+        # 列表带摘要 / 首图 / 精选标记
+        row = next(x for x in c.get("/api/posts").json()["posts"] if x["id"] == pid)
+        assert row["excerpt"].startswith("介绍 SAP") and row["cover"] == "" and row["featured"] is False
+
+        # 精选：仅管理员可设；设后出现在公开精选位
+        assert c.post(f"/api/admin/posts/{pid}/feature", json={"featured": True}).status_code == 401
+        r = c.post(f"/api/admin/posts/{pid}/feature", headers=ADMIN, json={"featured": True})
+        assert r.status_code == 200 and r.json()["featured"] is True
+        assert c.get("/api/posts/featured").json()["posts"][0]["id"] == pid
+        assert c.post("/api/admin/posts/" + "f" * 32 + "/feature", headers=ADMIN,
+                      json={"featured": True}).status_code == 404
+
         # 详情（含正文）
         r = c.get(f"/api/posts/{pid}")
         assert r.status_code == 200 and "批次" in r.json()["body_md"]
@@ -66,6 +78,7 @@ def test_posts_end_to_end():
         r = c.put(f"/api/posts/{pid}", json={"title": "改标题", "body_md": "新正文", "category": cat, "tags": []})
         assert r.status_code == 200 and r.json()["status"] == "pending"
         assert not any(x["id"] == pid for x in c.get("/api/posts").json()["posts"])  # 撤下线上
+        assert not any(x["id"] == pid for x in c.get("/api/posts/featured").json()["posts"])  # 精选一并取消
 
         # 会话帖子分类选择
         sid = c.post("/api/sessions").json()["id"]

@@ -149,6 +149,7 @@ ChrisAI/
 | `POST_CATEGORIES` | 社区帖子固定分类（逗号分隔，管理员预设） | `AI 教程,实践笔记,行业观察,工具推荐,随笔` |
 | `POST_MAX_PER_USER` | 每用户帖子数上限 | `50` |
 | `POST_BODY_MAX_CHARS` | 帖子正文字符上限 | `100000` |
+| `POST_FEATURED_MAX` | 帖子列表顶部精选位最多显示几篇 | `3` |
 
 ## API 概览
 

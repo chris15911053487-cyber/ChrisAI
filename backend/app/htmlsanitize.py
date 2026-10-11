@@ -205,3 +205,68 @@ def html_to_text(html: str) -> str:
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n\s*", "\n\n", text)
     return text.strip()
+
+
+# ---------------- 列表预览：摘要 + 首图 ----------------
+EXCERPT_MAX = 140   # 列表摘要字符数；前端再按两行截断
+
+# 封面只接受 http(s) 外链或站内绝对路径（如 /api/posts/images/...），不接受 #、mailto:、相对路径
+_COVER_URL_RE = re.compile(r"^(?:https?://|/(?!/))", re.IGNORECASE)
+
+
+class _FirstImage(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.src = ""
+
+    def handle_starttag(self, tag: str, attrs):
+        if self.src or tag.lower() != "img":
+            return
+        for name, value in attrs:
+            if (name or "").lower() == "src":
+                v = _clean_url(value or "")
+                if v and _COVER_URL_RE.match(v):
+                    self.src = v
+                return
+
+    handle_startendtag = handle_starttag
+
+
+_MD_IMG_RE = re.compile(r"!\[[^\]]*\]\(\s*<?([^)\s>]+)")
+
+
+def _md_first_image(md: str) -> str:
+    for m in _MD_IMG_RE.finditer(md or ""):
+        v = _clean_url(m.group(1))
+        if v and _COVER_URL_RE.match(v):
+            return v
+    return ""
+
+
+def markdown_to_text(md: str) -> str:
+    """粗略去掉 Markdown 标记，只用于生成列表摘要（旧帖只有 body_md）。"""
+    t = md or ""
+    t = re.sub(r"^\s*(?:```|~~~).*$", "", t, flags=re.M)              # 代码围栏行
+    t = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", t)                         # 图片
+    t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)                      # 链接留文字
+    t = re.sub(r"^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)", "", t, flags=re.M)
+    t = re.sub(r"<[^>]+>", "", t)
+    t = re.sub(r"(\*{1,3}|_{2,3}|~~|`+)", "", t)
+    return unescape(t)
+
+
+def post_preview(body_md: str, body_html: str) -> tuple[str, str]:
+    """列表用的 (摘要, 首图 URL)。新帖用 body_html，旧帖回退 body_md。"""
+    if body_html:
+        text = html_to_text(body_html)
+        p = _FirstImage()
+        p.feed(body_html)
+        p.close()
+        cover = p.src
+    else:
+        text = markdown_to_text(body_md)
+        cover = _md_first_image(body_md)
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) > EXCERPT_MAX:
+        text = text[:EXCERPT_MAX].rstrip() + "…"
+    return text, cover

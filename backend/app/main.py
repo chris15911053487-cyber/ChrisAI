@@ -980,6 +980,10 @@ class PostReviewReq(BaseModel):
     reason: str = Field(default="", max_length=500)
 
 
+class PostFeatureReq(BaseModel):
+    featured: bool
+
+
 def _valid_pid(pid: str) -> str:
     if not POST_ID_RE.match(pid or ""):
         raise HTTPException(404, "帖子不存在")
@@ -989,7 +993,8 @@ def _valid_pid(pid: str) -> str:
 def _post_list_view(p: dict) -> dict:
     """列表视图：不含正文。"""
     out = {k: p.get(k) for k in ("id", "author_name", "title", "category", "tags",
-                                 "status", "created_at", "updated_at", "published_at")}
+                                 "status", "created_at", "updated_at", "published_at", "excerpt", "cover")}
+    out["featured"] = bool(p.get("featured_at"))
     if "reject_reason" in p:
         out["reject_reason"] = p["reject_reason"]
     return out
@@ -1020,6 +1025,12 @@ async def list_posts(category: Optional[str] = None, limit: int = 50, offset: in
 async def post_categories():
     return {"categories": posts.categories(),
             "published": {r["category"]: r["n"] for r in posts.published_categories()}}
+
+
+# 公开：精选位（已发布且被管理员设为精选，最多 POST_FEATURED_MAX 篇）
+@app.get("/api/posts/featured")
+async def featured_posts():
+    return {"posts": [_post_list_view(p) for p in posts.list_featured()]}
 
 
 # 作者：我的全部帖子（任意状态）
@@ -1155,6 +1166,13 @@ async def admin_review_post(pid: str, req: PostReviewReq):
     _valid_pid(pid)
     p = posts.review(pid, approve=req.approve, reason=req.reason)
     return _post_list_view(p)
+
+
+# 管理员：设为精选 / 取消精选
+@app.post("/api/admin/posts/{pid}/feature", dependencies=[Depends(require_admin)])
+async def admin_feature_post(pid: str, req: PostFeatureReq):
+    _valid_pid(pid)
+    return _post_list_view(posts.set_featured(pid, req.featured))
 
 
 # 管理员：删除任意帖子

@@ -12,7 +12,7 @@ import logging
 import time
 from typing import Optional
 from . import config, db
-from .htmlsanitize import html_to_text, sanitize_html
+from .htmlsanitize import html_to_text, post_preview, sanitize_html
 from .knowledge import build_match, chunk_text, tokenize
 
 logger = logging.getLogger("agent.posts")
@@ -129,7 +129,9 @@ def create(owner: str, author_name: str, title: str, body_md: str,
     cat = _validate_category(category)
     tag_list = _validate_tags(tags)
     clean_html = _clean_body_html(body_html)
-    return db.post_create(owner, author_name or "", title, body_md, cat, tag_list, body_html=clean_html)
+    excerpt, cover = post_preview(body_md, clean_html)
+    return db.post_create(owner, author_name or "", title, body_md, cat, tag_list, body_html=clean_html,
+                          excerpt=excerpt, cover=cover)
 
 
 def update(pid: str, owner: str, title: str, body_md: str,
@@ -140,12 +142,14 @@ def update(pid: str, owner: str, title: str, body_md: str,
     cat = _validate_category(category)
     tag_list = _validate_tags(tags)
     clean_html = _clean_body_html(body_html)
+    excerpt, cover = post_preview(body_md, clean_html)
     fields = {"title": title, "body_md": body_md, "body_html": clean_html,
-              "category": cat, "tags": tag_list}
+              "category": cat, "tags": tag_list, "excerpt": excerpt, "cover": cover}
     if post["status"] in (PUBLISHED, REJECTED):
-        # 已上线或曾被驳回的，编辑后重新进入待审；撤下线上内容
+        # 已上线或曾被驳回的，编辑后重新进入待审；撤下线上内容，精选也一并取消（内容已变，需要重新评估）
         fields["status"] = PENDING
         fields["reject_reason"] = ""
+        fields["featured_at"] = 0
         db.post_clear_index(pid)
     return db.post_update_fields(pid, fields)
 
@@ -196,7 +200,21 @@ def unpublish(pid: str, owner: Optional[str], is_admin: bool = False) -> dict:
     if post["status"] != PUBLISHED:
         raise PostError("只能下架已发布的帖子", 409)
     db.post_clear_index(pid)
-    return db.post_update_fields(pid, {"status": DRAFT})
+    return db.post_update_fields(pid, {"status": DRAFT, "featured_at": 0})
+
+
+def set_featured(pid: str, featured: bool) -> dict:
+    """管理员设置 / 取消精选。只有已发布的帖子能设为精选；取消不限状态。"""
+    post = db.post_get(pid)
+    if not post:
+        raise PostError("帖子不存在", 404)
+    if featured and post["status"] != PUBLISHED:
+        raise PostError("只能精选已发布的帖子", 409)
+    return db.post_set_featured(pid, featured)
+
+
+def list_featured() -> list[dict]:
+    return db.post_list_featured(config.POST_FEATURED_MAX)
 
 
 # ---------------- 索引 ----------------

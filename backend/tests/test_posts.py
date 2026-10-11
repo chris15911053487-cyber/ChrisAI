@@ -180,3 +180,80 @@ def test_search_invalid_category_returns_empty():
 def test_search_empty_query():
     assert posts.search("") == []
     assert posts.search("   ") == []
+
+
+# ---------------- 列表预览（摘要 / 首图） ----------------
+def test_preview_from_html_and_md():
+    p = posts.create("u_pv", "作者", "预览", "", CAT0, [],
+                     body_html='<p>第一段<b>加粗</b></p><img src="javascript:alert(1)">'
+                               '<img src="/api/posts/images/u_pv/' + "a" * 32 + '.png"><p>' + "长" * 300 + "</p>")
+    assert p["excerpt"].startswith("第一段加粗")
+    assert p["excerpt"].endswith("…") and len(p["excerpt"]) <= 141
+    assert p["cover"] == "/api/posts/images/u_pv/" + "a" * 32 + ".png"   # 跳过危险协议，取第一张合法图
+
+    r = posts.update(p["id"], "u_pv", "预览", "# 标题\n\n![图](https://example.com/c.png)\n\n**正文**[链接](http://x)", CAT0, [])
+    assert r["excerpt"] == "标题 正文链接"
+    assert r["cover"] == "https://example.com/c.png"
+
+
+def test_preview_no_image():
+    p = _mk("u_pv2", body="只有文字")
+    assert p["excerpt"] == "只有文字" and p["cover"] == ""
+
+
+def test_migrate_backfills_preview():
+    """旧库没有 excerpt/cover/featured_at 列：_migrate 补列并为已有帖子补算摘要和首图。"""
+    import sqlite3
+    c = sqlite3.connect(":memory:", isolation_level=None)
+    c.row_factory = sqlite3.Row
+    c.executescript(db.SCHEMA)
+    c.execute("DROP TABLE posts")
+    c.execute("CREATE TABLE posts (id TEXT PRIMARY KEY, owner TEXT, author_name TEXT, title TEXT, body_md TEXT, "
+              "body_html TEXT NOT NULL DEFAULT '', category TEXT, tags TEXT, status TEXT, reject_reason TEXT, "
+              "created_at REAL, updated_at REAL, published_at REAL)")
+    c.execute("INSERT INTO posts(id, body_md, body_html) VALUES('old', '旧帖 ![x](https://e.com/i.png)', '')")
+    db._migrate(c)
+    r = c.execute("SELECT excerpt, cover, featured_at FROM posts WHERE id='old'").fetchone()
+    assert (r["excerpt"], r["cover"], r["featured_at"]) == ("旧帖", "https://e.com/i.png", 0)
+    db._migrate(c)  # 幂等
+
+
+# ---------------- 精选 ----------------
+def test_feature_requires_published():
+    p = _mk("u_ft")
+    with pytest.raises(posts.PostError) as ei:
+        posts.set_featured(p["id"], True)
+    assert ei.value.status == 409
+    with pytest.raises(posts.PostError) as ei:
+        posts.set_featured("f" * 32, True)
+    assert ei.value.status == 404
+
+
+def test_feature_list_and_cleared_on_unpublish_or_edit():
+    p = _publish("u_ft2", "精选测试", "精选正文", CAT0)
+    posts.set_featured(p["id"], True)
+    assert posts.list_featured()[0]["id"] == p["id"]          # 最近设为精选的排第一
+    posts.set_featured(p["id"], False)
+    assert all(x["id"] != p["id"] for x in posts.list_featured())
+
+    posts.set_featured(p["id"], True)
+    posts.unpublish(p["id"], "u_ft2")                          # 下架 → 取消精选
+    assert db.post_get(p["id"])["featured_at"] == 0
+
+    posts.submit(p["id"], "u_ft2")
+    posts.review(p["id"], approve=True)
+    posts.set_featured(p["id"], True)
+    posts.update(p["id"], "u_ft2", "精选测试", "改过的正文", CAT0, [])   # 编辑已发布 → 待审，取消精选
+    assert db.post_get(p["id"])["featured_at"] == 0
+    assert all(x["id"] != p["id"] for x in posts.list_featured())
+
+
+def test_featured_limit():
+    ids = [_publish("u_ft3", f"精选上限{i}", "正文", CAT0)["id"] for i in range(config.POST_FEATURED_MAX + 1)]
+    for pid in ids:
+        posts.set_featured(pid, True)
+    got = [x["id"] for x in posts.list_featured()]
+    assert len(got) == config.POST_FEATURED_MAX
+    assert got == list(reversed(ids))[:config.POST_FEATURED_MAX]
+    for pid in ids:
+        posts.set_featured(pid, False)   # 还原，避免影响其他测试

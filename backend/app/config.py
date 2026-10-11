@@ -111,6 +111,7 @@ POST_IMAGES_DIR = DATA_DIR / "post_images"                 # 帖子图片存储�
 POST_MAX_TAGS = _int("POST_MAX_TAGS", 8)                   # 每帖标签数上限
 POST_TAG_MAX = _int("POST_TAG_MAX", 20)                    # 单标签字符上限
 POST_SEARCH_LIMIT = _int("POST_SEARCH_LIMIT", 8)           # 对话检索返回的帖子片段数
+POST_FEATURED_MAX = _int("POST_FEATURED_MAX", 3)           # 帖子列表顶部精选位最多显示几篇
 
 # ---- 向量检索 / 重排（OpenAI 兼容接口，如硅基流动、阿里云百炼、自托管 TEI；不配置则只用关键词检索） ----
 EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "https://api.siliconflow.cn/v1").rstrip("/")
