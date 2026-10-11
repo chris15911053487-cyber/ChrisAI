@@ -3,13 +3,20 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
+# 可选镜像源（由 docker-compose 从项目根 .env 传入；留空 = 官方源）
+ARG APT_MIRROR=
+ARG PIP_MIRROR=
+
 # 中文字体：matplotlib 图表 / PDF 中文显示
-RUN apt-get update \
+RUN if [ -n "$APT_MIRROR" ]; then \
+      sed -i "s|http://deb.debian.org|$APT_MIRROR|g" /etc/apt/sources.list.d/debian.sources; \
+    fi \
+ && apt-get update \
  && apt-get install -y --no-install-recommends fonts-wqy-microhei \
  && rm -rf /var/lib/apt/lists/*
 
 COPY requirements-sandbox.txt /tmp/req.txt
-RUN pip install --no-cache-dir -r /tmp/req.txt && rm /tmp/req.txt \
+RUN pip install --no-cache-dir ${PIP_MIRROR:+-i "$PIP_MIRROR"} -r /tmp/req.txt && rm /tmp/req.txt \
  && mkdir -p /opt/mpl \
  && printf 'font.sans-serif: WenQuanYi Micro Hei, DejaVu Sans\naxes.unicode_minus: False\n' > /opt/mpl/matplotlibrc \
  && MPLCONFIGDIR=/opt/mpl python -c "import matplotlib.font_manager as fm; fm._load_fontmanager(try_read_cache=False)" \

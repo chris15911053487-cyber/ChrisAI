@@ -9,8 +9,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /srv
 
+# 可选 PyPI 镜像（由 docker-compose 从项目根 .env 传入；留空 = 官方源）
+ARG PIP_MIRROR=
+
 COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt \
+RUN pip install --no-cache-dir ${PIP_MIRROR:+-i "$PIP_MIRROR"} -r requirements.txt \
  && useradd -u 1000 -m app \
  && mkdir -p /data && chown app:app /data
 

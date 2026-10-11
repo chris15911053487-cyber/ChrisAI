@@ -116,6 +116,15 @@ ChrisAI/
    docker compose up -d --build
    ```
 
+   国内服务器构建慢（`apt-get` / `pip install` 卡住）时，可在项目根目录建 `.env`（已在 `.gitignore`）指定镜像源，只在构建时使用，留空即官方源：
+
+   ```bash
+   cat > .env <<'ENV'
+   APT_MIRROR=http://mirrors.aliyun.com
+   PIP_MIRROR=https://mirrors.aliyun.com/pypi/simple/
+   ENV
+   ```
+
 4. 访问 `http://localhost:8015`（可在 `docker-compose.yml` 中修改左侧端口）。
 
 ## 配置项
