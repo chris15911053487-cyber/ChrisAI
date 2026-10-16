@@ -16,7 +16,7 @@ Chris Li 的个人网站 + 企业级 AI Agent 平台。前端是一个静态展�
 - **知识库**：上传 PDF / Word / Excel / PPT / Markdown 等文档，对话中选择知识库后 AI 先检索再回答并标注出处。检索为关键词（SQLite FTS5）+ 语义向量混合，RRF 融合后可选 reranker 重排；向量服务不可用时自动退回关键词检索。
 - **社区帖子**：登录用户发布文章 / 笔记（Markdown），先经管理员审核后公开；分类为管理员预设固定列表，标签自由填写。帖子可在对话中作为参考来源（关键词检索，与知识库并列、可按分类勾选）。正文渲染经 DOMPurify 净化，防止 XSS。
 - **AI 课程**：内置两门课程。「AI入门」6 节课分四个阶段（关系 → 认知 → 方法 → 能力）。在课程列表点「AI入门」会在新标签页打开深色课程目录（`course.html`），每节课用滚动叙事的**故事页**（`story.html`）播放，包括全屏金句、对话舞台、白板、互动解锁和手机端点击推进，学完收集工具卡。还没做好故事页的课在目录里显示「制作中」。「AI知识普及」筹备中。未登录可以浏览目录；进入课程、查看工具卡要点和学习进度需要登录，进度按账号保存，可续读。故事页由固定渲染器（`site/story.js`）播放纯内容片段（`courses/<课程>/stories/<课>.html`）；做新课只需写片段、跑校验器、在清单里打开开关，不用改代码。写法见 `courses/ai-intro/stories/README.md`。
-- **文档编辑器**（AI 工具）：`site/docedit.html`，打开或拖入 .md / .html 文件，源码编辑 + 实时预览，导出 .md / .html（Markdown 也可导出为独立 HTML 页面）。纯前端，草稿只存在本机 localStorage。HTML 预览放在 `sandbox="allow-scripts"` 的 iframe 里，拿不到本站 cookie 和 API。
+- **文档编辑器**（AI 工具）：`site/docedit.html`，打开或拖入 .md / .html 文件，源码编辑 + 实时预览，导出 .md / .html（Markdown 也可导出为独立 HTML 页面），也可导出 Word（.doc）和 PDF（走浏览器打印）。纯前端，草稿只存在本机 localStorage。HTML 预览放在 `sandbox="allow-scripts"` 的 iframe 里，拿不到本站 cookie 和 API。
 - **会话持久化**：按匿名访客 cookie 隔离会话，数据存于 SQLite。
 - **文件工作区**：每会话独立工作区，支持文件上传/下载，带配额与 TTL 自动清理。
 - **多层限流与配额**：nginx 层 + 应用层（每 IP 每分钟、每访客每日轮数、全局每日 token 上限等）。

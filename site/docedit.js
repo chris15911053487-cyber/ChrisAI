@@ -1,4 +1,4 @@
-/* 文档编辑器（docedit.html）：打开 / 导入 .md、.html，源码编辑 + 实时预览，导出。纯前端，不经过后端。
+/* 文档编辑器（docedit.html）：打开 / 导入 .md、.html，源码编辑 + 实时预览，导出（.md / .html / Word / PDF）。纯前端，不经过后端。
    依赖：icons.js、marked + DOMPurify（Markdown 预览与导出）。
    安全：
    - Markdown：marked → DOMPurify 净化，渲染进 sandbox="allow-same-origin"（无 allow-scripts）的 iframe，
@@ -63,7 +63,21 @@ img{max-width:100%;height:auto;border-radius:6px}
 hr{border:none;border-top:1px solid #e7e7e4;margin:2em 0}
 table{border-collapse:collapse;display:block;overflow:auto}
 th,td{border:1px solid #e7e7e4;padding:6px 12px;text-align:left}th{background:#fafaf9;font-weight:600}
-@media(max-width:600px){body{padding:20px 16px 48px}}`;
+@media(max-width:600px){body{padding:20px 16px 48px}}
+@page{margin:18mm 16mm}
+@media print{body{padding:0}pre,pre code{white-space:pre-wrap;word-break:break-word}h1,h2,h3,h4{break-after:avoid}pre,table,img,blockquote{break-inside:avoid}}`;
+
+  // Word 只认一部分 CSS（不支持 flex / 变量 / max-width 等），单独给一份保守的样式
+  const WORD_CSS = `
+@page WordSection1{size:595.3pt 841.9pt;margin:72pt 64pt}
+div.WordSection1{page:WordSection1}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;font-size:11pt;line-height:1.6;color:#1f1f23}
+h1{font-size:20pt}h2{font-size:16pt}h3{font-size:13pt}h4,h5,h6{font-size:11pt}
+a{color:#2b59ff}
+code{font-family:Consolas,"Courier New",monospace;font-size:10pt;background:#f4f4f2}
+pre{font-family:Consolas,"Courier New",monospace;font-size:9.5pt;background:#f4f4f2;padding:8pt;white-space:pre-wrap}
+blockquote{margin-left:0;padding-left:8pt;border-left:3pt solid #d6d6d1;color:#52525b}
+table{border-collapse:collapse}th,td{border:1px solid #bfbfbf;padding:4pt 8pt}th{background:#f2f2f2}`;
 
   // 返回已净化的 HTML 片段；没有 DOMPurify 时退回转义纯文本，绝不输出未净化内容
   function mdToSafeHtml(md) {
@@ -267,8 +281,56 @@ th,td{border:1px solid #e7e7e4;padding:6px 12px;text-align:left}th{background:#f
     download(mdDocument(name, mdToSafeHtml(src.value)), name + '.html', 'text/html;charset=utf-8');
   }
 
+  // Word：生成 Word 可识别的 HTML，存为 .doc（Word / WPS 都能直接打开编辑，不依赖第三方库）
+  // HTML 文档用 DOMParser 解析（惰性文档，不执行脚本），只取 body 和内联 <style>
+  function exportWord() {
+    if (!src.value.trim()) { toast('内容为空，没有可导出的内容', true); return; }
+    const name = baseName();
+    let css = WORD_CSS, body;
+    if (state.fmt === 'md') {
+      body = mdToSafeHtml(src.value);
+    } else {
+      const doc = new DOMParser().parseFromString(src.value, 'text/html');
+      doc.querySelectorAll('script,noscript,template,iframe,object,embed,base,link,meta').forEach(n => n.remove());
+      doc.querySelectorAll('style').forEach(s => { css += '\n' + s.textContent; s.remove(); });
+      body = doc.body.innerHTML;
+    }
+    const html = '﻿<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\n' +
+      '<head>\n<meta charset="UTF-8">\n<title>' + escapeHtml(name) + '</title>\n' +
+      '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->\n' +
+      '<style>' + css + '\n</style>\n</head>\n<body>\n<div class="WordSection1">\n' + body + '\n</div>\n</body>\n</html>\n';
+    download(html, name + '.doc', 'application/msword');
+  }
+
+  // PDF：交给浏览器打印，在打印对话框里选「另存为 PDF」。文字可选可搜，中文排版也最好。
+  // 打印用单独的隐藏 iframe：sandbox="allow-same-origin allow-modals"，不给 allow-scripts，
+  // 所以 HTML 文档里的脚本不会执行（靠脚本生成的内容不会出现在 PDF 里）；不要为了打印去放宽两个预览帧的 sandbox。
+  function exportPdf() {
+    if (!src.value.trim()) { toast('内容为空，没有可导出的内容', true); return; }
+    const old = $('pvPrint');
+    if (old) old.remove();
+    const f = document.createElement('iframe');
+    f.id = 'pvPrint';
+    f.setAttribute('sandbox', 'allow-same-origin allow-modals');
+    f.setAttribute('aria-hidden', 'true');
+    f.tabIndex = -1;
+    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    // Markdown 文档的 <title> 用文件名，浏览器会拿它当 PDF 的默认文件名
+    f.srcdoc = state.fmt === 'md' ? mdDocument(baseName(), mdToSafeHtml(src.value)) : src.value;
+    f.addEventListener('load', () => {
+      // load 已等图片加载完；稍等一下让字体排版稳定
+      setTimeout(() => {
+        try { f.contentWindow.focus(); f.contentWindow.print(); }
+        catch { toast('浏览器拦截了打印，请稍后重试', true); }
+      }, 200);
+    }, { once: true });
+    document.body.appendChild(f);
+  }
+
   btnExport.addEventListener('click', exportPrimary);
   btnExportAlt.addEventListener('click', exportMdAsHtml);
+  $('btnWord').addEventListener('click', exportWord);
+  $('btnPdf').addEventListener('click', exportPdf);
 
   // ---------- 编辑区 ----------
   src.addEventListener('input', onEdit);
@@ -295,6 +357,7 @@ th,td{border:1px solid #e7e7e4;padding:6px 12px;text-align:left}th{background:#f
     const k = e.key.toLowerCase();
     if (k === 's') { e.preventDefault(); exportPrimary(); }
     else if (k === 'o') { e.preventDefault(); fileInput.click(); }
+    else if (k === 'p') { e.preventDefault(); exportPdf(); }     // 打印文档本身，而不是整个编辑器页面
   });
 
   document.querySelectorAll('#fmtSeg button').forEach(b => b.addEventListener('click', () => {
